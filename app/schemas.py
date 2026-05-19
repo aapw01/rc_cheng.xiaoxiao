@@ -33,6 +33,7 @@ class NotificationResponse(BaseModel):
     event_id: str
     status: NotificationStatus
     attempt_count: int
+    last_error: str | None
     payload: dict[str, Any]
     metadata: dict[str, Any]
     created_at: datetime

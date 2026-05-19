@@ -32,6 +32,7 @@ export type NotificationItem = {
   event_id: string;
   status: string;
   attempt_count: number;
+  last_error: string | null;
   payload: Record<string, unknown>;
   metadata: Record<string, unknown>;
   created_at: string;

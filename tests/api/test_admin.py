@@ -69,6 +69,7 @@ async def test_admin_notifications_list_filter(api_client, db_session):
 
 async def test_admin_notification_detail_includes_attempts(api_client, db_session):
     notification = await create_notification(db_session)
+    notification.last_error = "HTTP 500"
     db_session.add(
         DeliveryAttempt(
             notification_id=notification.id,
@@ -87,6 +88,7 @@ async def test_admin_notification_detail_includes_attempts(api_client, db_sessio
     assert response.status_code == 200
     data = response.json()["data"]
     assert data["id"] == str(notification.id)
+    assert data["last_error"] == "HTTP 500"
     assert data["attempts"][0]["response_status"] == 500
 
 

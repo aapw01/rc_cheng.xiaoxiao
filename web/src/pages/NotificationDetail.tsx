@@ -32,6 +32,9 @@ export default function NotificationDetail({ id, onBack }: { id: string; onBack:
         <Descriptions.Item label="Event">{item.event_type}</Descriptions.Item>
         <Descriptions.Item label="Event ID">{item.event_id}</Descriptions.Item>
         <Descriptions.Item label="Attempts">{item.attempt_count}</Descriptions.Item>
+        <Descriptions.Item label="Last Error" span={2}>
+          {item.last_error || "-"}
+        </Descriptions.Item>
       </Descriptions>
       <Space className="toolbar">
         <Button disabled={item.status !== "failed"} onClick={retry}>
@@ -56,4 +59,3 @@ export default function NotificationDetail({ id, onBack }: { id: string; onBack:
     </Card>
   );
 }
-

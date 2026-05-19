@@ -20,6 +20,7 @@ def serialize_notification(notification) -> NotificationResponse:
         event_id=notification.event_id,
         status=notification.status,
         attempt_count=notification.attempt_count,
+        last_error=notification.last_error,
         payload=notification.payload,
         metadata=notification.metadata_,
         created_at=notification.created_at,
