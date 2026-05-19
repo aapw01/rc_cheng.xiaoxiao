@@ -48,6 +48,6 @@
 | `GET /api/admin/providers` | 供应商列表 |
 | `POST /api/admin/providers/{provider_code}/pause` | 暂停供应商新任务 |
 | `POST /api/admin/providers/{provider_code}/resume` | 恢复供应商新任务 |
-| `GET /api/admin/notifications` | 通知列表，支持 provider/status 筛选 |
+| `GET /api/admin/notifications` | 通知列表，支持 provider/status 筛选和 limit/offset 分页 |
 | `GET /api/admin/notifications/{id}` | 通知详情和 attempts |
 | `POST /api/admin/notifications/{id}/retry` | failed 任务人工重试 |

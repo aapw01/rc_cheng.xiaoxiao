@@ -67,6 +67,21 @@ async def test_admin_notifications_list_filter(api_client, db_session):
     assert items[0]["provider_code"] == "ads"
 
 
+async def test_admin_notifications_list_paginates(api_client, db_session):
+    await create_notification(db_session, provider_code="crm", event_id="evt_page_1")
+    await create_notification(db_session, provider_code="crm", event_id="evt_page_2")
+    await create_notification(db_session, provider_code="ads", event_id="evt_page_3")
+
+    response = await api_client.get("/api/admin/notifications?limit=2&offset=1")
+
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["total"] == 3
+    assert data["limit"] == 2
+    assert data["offset"] == 1
+    assert len(data["items"]) == 2
+
+
 async def test_admin_notification_detail_includes_attempts(api_client, db_session):
     notification = await create_notification(db_session)
     notification.last_error = "HTTP 500"

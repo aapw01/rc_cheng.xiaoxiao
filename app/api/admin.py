@@ -2,7 +2,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -18,6 +18,8 @@ from app.tasks.delivery import actor_for_queue
 router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(require_api_key)])
 ProviderCodeQuery = Annotated[str | None, Query()]
 StatusQuery = Annotated[NotificationStatus | None, Query()]
+LimitQuery = Annotated[int, Query(ge=1, le=100)]
+OffsetQuery = Annotated[int, Query(ge=0)]
 
 
 @router.get("/metrics", response_model=ApiResponse)
@@ -85,14 +87,27 @@ async def list_notifications(
     session: Annotated[AsyncSession, Depends(get_session)],
     provider_code: ProviderCodeQuery = None,
     status: StatusQuery = None,
+    limit: LimitQuery = 20,
+    offset: OffsetQuery = 0,
 ) -> ApiResponse:
     query = select(Notification).order_by(Notification.created_at.desc())
+    count_query = select(func.count()).select_from(Notification)
     if provider_code is not None:
         query = query.where(Notification.provider_code == provider_code)
+        count_query = count_query.where(Notification.provider_code == provider_code)
     if status is not None:
         query = query.where(Notification.status == status)
-    notifications = await session.scalars(query)
-    return ApiResponse(data={"items": [serialize_notification(item).model_dump(mode="json") for item in notifications]})
+        count_query = count_query.where(Notification.status == status)
+    notifications = await session.scalars(query.limit(limit).offset(offset))
+    total = await session.scalar(count_query)
+    return ApiResponse(
+        data={
+            "items": [serialize_notification(item).model_dump(mode="json") for item in notifications],
+            "total": total or 0,
+            "limit": limit,
+            "offset": offset,
+        }
+    )
 
 
 @router.get("/notifications/{notification_id}", response_model=ApiResponse)

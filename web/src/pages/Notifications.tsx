@@ -7,8 +7,20 @@ export default function Notifications({ onOpen }: { onOpen: (id: string) => void
   const [providers, setProviders] = useState<Provider[]>([]);
   const [provider, setProvider] = useState<string | undefined>();
   const [status, setStatus] = useState<string | undefined>();
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
 
-  const load = () => getNotifications({ provider_code: provider, status }).then((data) => setItems(data.items));
+  const load = () =>
+    getNotifications({
+      provider_code: provider,
+      status,
+      limit: pageSize,
+      offset: (page - 1) * pageSize
+    }).then((data) => {
+      setItems(data.items);
+      setTotal(data.total);
+    });
 
   useEffect(() => {
     getProviders().then(setProviders);
@@ -16,7 +28,7 @@ export default function Notifications({ onOpen }: { onOpen: (id: string) => void
 
   useEffect(() => {
     load();
-  }, [provider, status]);
+  }, [provider, status, page, pageSize]);
 
   return (
     <Card>
@@ -27,7 +39,10 @@ export default function Notifications({ onOpen }: { onOpen: (id: string) => void
           placeholder="Provider"
           style={{ width: 180 }}
           value={provider}
-          onChange={setProvider}
+          onChange={(value) => {
+            setProvider(value);
+            setPage(1);
+          }}
           options={providers.map((item) => ({ label: item.display_name, value: item.provider_code }))}
         />
         <Select
@@ -35,7 +50,10 @@ export default function Notifications({ onOpen }: { onOpen: (id: string) => void
           placeholder="Status"
           style={{ width: 180 }}
           value={status}
-          onChange={setStatus}
+          onChange={(value) => {
+            setStatus(value);
+            setPage(1);
+          }}
           options={["pending", "delivering", "retrying", "delivered", "failed"].map((item) => ({
             label: item,
             value: item
@@ -60,8 +78,17 @@ export default function Notifications({ onOpen }: { onOpen: (id: string) => void
             render: (_, row) => <Button onClick={() => onOpen(row.id)}>Open</Button>
           }
         ]}
+        pagination={{
+          current: page,
+          pageSize,
+          total,
+          showSizeChanger: true,
+          onChange: (nextPage, nextPageSize) => {
+            setPage(nextPage);
+            setPageSize(nextPageSize);
+          }
+        }}
       />
     </Card>
   );
 }
-

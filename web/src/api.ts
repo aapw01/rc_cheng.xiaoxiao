@@ -74,11 +74,20 @@ export function resumeProvider(providerCode: string) {
   return request(`/api/admin/providers/${providerCode}/resume`, { method: "POST" });
 }
 
-export function getNotifications(params: { provider_code?: string; status?: string }) {
+export type NotificationList = {
+  items: NotificationItem[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
+export function getNotifications(params: { provider_code?: string; status?: string; limit?: number; offset?: number }) {
   const search = new URLSearchParams();
   if (params.provider_code) search.set("provider_code", params.provider_code);
   if (params.status) search.set("status", params.status);
-  return request<{ items: NotificationItem[] }>(`/api/admin/notifications?${search}`);
+  if (params.limit) search.set("limit", String(params.limit));
+  if (params.offset) search.set("offset", String(params.offset));
+  return request<NotificationList>(`/api/admin/notifications?${search}`);
 }
 
 export function getNotification(id: string) {
