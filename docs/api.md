@@ -28,6 +28,12 @@
 
 成功返回 `202 Accepted`。重复提交同一 `provider_code + event_type + event_id` 返回已有 notification。
 
+限制：
+
+- 请求体最大由 `MAX_PAYLOAD_BYTES` 控制，默认 64 KB，超出返回 `413 payload_too_large`；
+- `metadata` 最多 32 个字段；
+- `metadata` 中字符串 value 最长 1024 字符。
+
 ## 查询通知
 
 `GET /api/notifications/{id}`
@@ -45,4 +51,3 @@
 | `GET /api/admin/notifications` | 通知列表，支持 provider/status 筛选 |
 | `GET /api/admin/notifications/{id}` | 通知详情和 attempts |
 | `POST /api/admin/notifications/{id}/retry` | failed 任务人工重试 |
-

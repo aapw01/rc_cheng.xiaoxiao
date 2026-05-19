@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.models import NotificationStatus
 
@@ -14,6 +14,16 @@ class NotificationCreate(BaseModel):
     occurred_at: datetime | None = None
     payload: dict[str, Any]
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("metadata")
+    @classmethod
+    def validate_metadata(cls, value: dict[str, Any]) -> dict[str, Any]:
+        if len(value) > 32:
+            raise ValueError("metadata must contain at most 32 fields")
+        too_long = [key for key, item in value.items() if isinstance(item, str) and len(item) > 1024]
+        if too_long:
+            raise ValueError("metadata string values must be at most 1024 characters")
+        return value
 
 
 class NotificationResponse(BaseModel):
@@ -33,4 +43,3 @@ class ApiResponse(BaseModel):
     code: int | str = 0
     message: str = "ok"
     data: Any
-

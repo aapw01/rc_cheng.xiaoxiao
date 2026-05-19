@@ -77,6 +77,78 @@ async def test_unknown_provider_is_rejected(api_client):
     assert response.json()["code"] == "provider_not_found"
 
 
+async def test_payload_too_large_is_rejected(api_client, monkeypatch):
+    monkeypatch.setenv("MAX_PAYLOAD_BYTES", "128")
+    from app.config import get_settings
+
+    get_settings.cache_clear()
+    response = await api_client.post(
+        "/api/notifications",
+        json={
+            "provider_code": "crm",
+            "event_type": "subscription_paid",
+            "event_id": "evt_too_large",
+            "payload": {
+                "user_id": "u_123",
+                "email": "alice@example.com",
+                "subscription_id": "sub_1",
+                "amount": 19900,
+                "currency": "USD",
+                "paid_at": "2026-05-19T10:00:00Z",
+                "padding": "x" * 300,
+            },
+        },
+    )
+
+    assert response.status_code == 413
+    assert response.json()["code"] == "payload_too_large"
+    get_settings.cache_clear()
+
+
+async def test_metadata_field_count_is_limited(api_client):
+    response = await api_client.post(
+        "/api/notifications",
+        json={
+            "provider_code": "crm",
+            "event_type": "subscription_paid",
+            "event_id": "evt_metadata_many_fields",
+            "payload": {
+                "user_id": "u_123",
+                "email": "alice@example.com",
+                "subscription_id": "sub_1",
+                "amount": 19900,
+                "currency": "USD",
+                "paid_at": "2026-05-19T10:00:00Z",
+            },
+            "metadata": {f"k{i}": "v" for i in range(33)},
+        },
+    )
+
+    assert response.status_code == 422
+
+
+async def test_metadata_string_value_length_is_limited(api_client):
+    response = await api_client.post(
+        "/api/notifications",
+        json={
+            "provider_code": "crm",
+            "event_type": "subscription_paid",
+            "event_id": "evt_metadata_value_too_long",
+            "payload": {
+                "user_id": "u_123",
+                "email": "alice@example.com",
+                "subscription_id": "sub_1",
+                "amount": 19900,
+                "currency": "USD",
+                "paid_at": "2026-05-19T10:00:00Z",
+            },
+            "metadata": {"trace_id": "x" * 1025},
+        },
+    )
+
+    assert response.status_code == 422
+
+
 async def test_paused_provider_blocks_only_new_submissions(api_client, db_session):
     provider = await db_session.scalar(select(Provider).where(Provider.provider_code == "crm"))
     provider.paused = True

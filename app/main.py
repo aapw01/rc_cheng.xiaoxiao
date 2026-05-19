@@ -1,13 +1,14 @@
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api.admin import router as admin_router
 from app.api.notifications import router as notifications_router
-from app.errors import install_error_handlers
+from app.config import get_settings
+from app.errors import error_response, install_error_handlers
 
 WEB_DIST_DIR = Path(__file__).resolve().parent.parent / "web" / "dist"
 WEB_INDEX_FILE = WEB_DIST_DIR / "index.html"
@@ -26,6 +27,19 @@ app.include_router(admin_router)
 
 if WEB_DIST_DIR.exists():
     app.mount("/ops/assets", StaticFiles(directory=WEB_DIST_DIR / "assets"), name="ops-assets")
+
+
+@app.middleware("http")
+async def reject_oversized_notification_payloads(request: Request, call_next):
+    if request.method == "POST" and request.url.path == "/api/notifications":
+        content_length = request.headers.get("content-length")
+        if (
+            content_length is not None
+            and content_length.isdigit()
+            and int(content_length) > get_settings().max_payload_bytes
+        ):
+            return error_response(413, "payload_too_large", "Request body is too large")
+    return await call_next(request)
 
 
 @app.get("/health", tags=["health"])
