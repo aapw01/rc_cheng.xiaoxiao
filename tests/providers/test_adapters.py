@@ -1,7 +1,25 @@
 import pytest
 
+from app.config import get_settings
 from app.providers.base import ProviderAdapterError
 from app.providers.registry import get_adapter
+
+
+def test_crm_adapter_uses_configured_base_url(monkeypatch):
+    monkeypatch.setenv("PROVIDER_CRM_BASE_URL", "http://vendor:9000")
+    get_settings.cache_clear()
+
+    request = get_adapter("crm").build_request(
+        "user_registered",
+        {
+            "user_id": "u_123",
+            "email": "alice@example.com",
+            "registered_at": "2026-05-19T10:00:00Z",
+        },
+    )
+
+    assert request.url == "http://vendor:9000/api/contacts/registered"
+    get_settings.cache_clear()
 
 
 def test_crm_subscription_paid_request():

@@ -8,9 +8,11 @@ class InventoryAdapter(ProviderAdapter):
     provider_code = "inventory"
     supported_event_types = {"order_created"}
 
-    def __init__(self, base_url: str = "https://inventory.vendor.test", api_key: str | None = None) -> None:
+    def __init__(self, base_url: str | None = None, api_key: str | None = None) -> None:
+        settings = get_settings()
+        base_url = base_url or settings.provider_inventory_base_url
         self.base_url = base_url.rstrip("/")
-        self.api_key = api_key or get_settings().provider_inventory_api_key
+        self.api_key = api_key or settings.provider_inventory_api_key
 
     def build_request(self, event_type: str, payload: dict[str, Any]) -> AdapterRequest:
         self.ensure_supported(event_type)
@@ -28,4 +30,3 @@ class InventoryAdapter(ProviderAdapter):
                 "createdAt": payload["created_at"],
             },
         )
-

@@ -10,3 +10,12 @@ def test_health_returns_ok():
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+
+def test_ops_ui_serves_spa_index():
+    client = TestClient(app)
+
+    response = client.get("/ops")
+
+    assert response.status_code == 200
+    assert "Notification Ops" in response.text

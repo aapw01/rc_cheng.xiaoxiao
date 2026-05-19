@@ -20,7 +20,7 @@ migrate:
 	uv run alembic upgrade head
 
 seed:
-	uv run python scripts/seed_providers.py
+	uv run python -m scripts.seed_providers
 
 docker-up:
 	docker compose up --build
@@ -30,4 +30,3 @@ docker-down:
 
 web-build:
 	npm --prefix web run build
-

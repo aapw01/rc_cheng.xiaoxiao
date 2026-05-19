@@ -14,8 +14,11 @@ class Settings(BaseSettings):
     max_payload_bytes: int = Field(default=65_536, gt=0)
 
     provider_crm_api_key: str = "dev-crm-key"
+    provider_crm_base_url: str = "https://crm.vendor.test"
     provider_ads_bearer_token: str = "dev-ads-token"
+    provider_ads_base_url: str = "https://ads.vendor.test"
     provider_inventory_api_key: str = "dev-inventory-key"
+    provider_inventory_base_url: str = "https://inventory.vendor.test"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
@@ -23,4 +26,3 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
-

@@ -26,6 +26,7 @@ def upgrade() -> None:
         "delivered",
         "failed",
         name="notification_status",
+        create_type=False,
     )
     notification_status.create(op.get_bind(), checkfirst=True)
 

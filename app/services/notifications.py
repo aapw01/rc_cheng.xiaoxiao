@@ -9,6 +9,7 @@ from app.models import Notification, Provider
 from app.providers.base import ProviderAdapterError
 from app.providers.registry import get_adapter
 from app.schemas import NotificationCreate
+from app.tasks.delivery import actor_for_queue
 
 
 async def submit_notification(session: AsyncSession, payload: NotificationCreate) -> Notification:
@@ -43,6 +44,7 @@ async def submit_notification(session: AsyncSession, payload: NotificationCreate
             return existing
         raise
     await session.refresh(notification)
+    actor_for_queue(provider.queue_name).send(str(notification.id))
     return notification
 
 
@@ -69,4 +71,3 @@ def validate_adapter(payload: NotificationCreate) -> None:
         adapter.build_request(payload.event_type, payload.payload)
     except ProviderAdapterError as exc:
         raise AppError(status_code=400, code="invalid_event", message=str(exc)) from exc
-

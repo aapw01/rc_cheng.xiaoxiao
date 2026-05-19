@@ -3,7 +3,16 @@ from sqlalchemy import select
 from app.models import Provider
 
 
-async def test_submit_notification_returns_accepted(api_client):
+async def test_submit_notification_returns_accepted(api_client, monkeypatch):
+    sent_messages = []
+
+    class FakeActor:
+        @staticmethod
+        def send(notification_id: str) -> None:
+            sent_messages.append(notification_id)
+
+    monkeypatch.setattr("app.services.notifications.actor_for_queue", lambda queue_name: FakeActor)
+
     response = await api_client.post(
         "/api/notifications",
         json={
@@ -27,6 +36,7 @@ async def test_submit_notification_returns_accepted(api_client):
     assert data["provider_code"] == "crm"
     assert data["status"] == "pending"
     assert data["event_id"] == "evt_1"
+    assert sent_messages == [data["id"]]
 
 
 async def test_duplicate_submission_returns_existing_notification(api_client):

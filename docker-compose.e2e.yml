@@ -5,22 +5,18 @@ services:
       POSTGRES_DB: notifications
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
+
+  mock-vendor:
+    image: notification-platform:local
+    command: uv run python scripts/mock_vendor.py
 
   api:
     image: notification-platform:local
-    build: .
-    env_file:
-      - path: .env
-        required: false
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/notifications
       REDIS_URL: redis://redis:6379/0
@@ -30,15 +26,11 @@ services:
       - postgres
       - redis
     ports:
-      - "8000:8000"
+      - "18000:8000"
     command: uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
 
   worker:
     image: notification-platform:local
-    build: .
-    env_file:
-      - path: .env
-        required: false
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/notifications
       REDIS_URL: redis://redis:6379/0
@@ -47,13 +39,8 @@ services:
     depends_on:
       - postgres
       - redis
+      - mock-vendor
     command: uv run dramatiq app.tasks.delivery --queues notifications_crm notifications_ads notifications_inventory
-
-  mock-vendor:
-    image: notification-platform:local
-    profiles:
-      - e2e
-    command: uv run python scripts/mock_vendor.py
 
 volumes:
   postgres_data:

@@ -10,7 +10,7 @@ uv sync
 npm --prefix web install
 docker compose up -d postgres redis
 uv run alembic upgrade head
-uv run python scripts/seed_providers.py
+uv run python -m scripts.seed_providers
 uv run uvicorn app.main:app --reload
 ```
 
@@ -19,6 +19,14 @@ uv run uvicorn app.main:app --reload
 ```bash
 npm --prefix web run dev
 ```
+
+Docker 完整环境：
+
+```bash
+docker compose up --build
+```
+
+运维 UI 生产入口为 `http://localhost:8000/ops`。
 
 ## 技术栈
 
@@ -53,6 +61,10 @@ npm --prefix web run dev
 | `make web-build` | 构建前端 |
 | `make docker-up` | 启动完整环境 |
 
+## 镜像打包
+
+GitHub Actions 会在 push、PR 和 tag 时构建统一 Docker 镜像；非 PR 事件会推送到 GitHub Container Registry。API 和 worker 使用同一个镜像，通过不同 command 启动。
+
 ## 环境变量
 
 见 [.env.example](.env.example)。
@@ -64,4 +76,3 @@ npm --prefix web run dev
 - [部署文档](docs/deployment.md)
 - [测试文档](docs/testing.md)
 - [供应商接入文档](docs/provider-onboarding.md)
-

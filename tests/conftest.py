@@ -9,6 +9,16 @@ from app.main import app
 from app.models import Base, Provider
 
 
+@pytest.fixture(autouse=True)
+def disable_dramatiq_enqueue(monkeypatch: pytest.MonkeyPatch) -> None:
+    class NoopActor:
+        @staticmethod
+        def send(notification_id: str) -> None:
+            return None
+
+    monkeypatch.setattr("app.services.notifications.actor_for_queue", lambda queue_name: NoopActor)
+
+
 @pytest.fixture
 async def db_session() -> AsyncIterator[AsyncSession]:
     engine = create_async_engine("sqlite+aiosqlite:///:memory:")
@@ -55,10 +65,12 @@ async def api_client(db_session: AsyncSession) -> AsyncIterator[AsyncClient]:
 
     app.dependency_overrides[get_session] = override_get_session
     transport = ASGITransport(app=app)
-    async with AsyncClient(
-        transport=transport,
-        base_url="http://testserver",
-        headers={"X-API-Key": "dev-api-key"},
-    ) as client:
-        yield client
-    app.dependency_overrides.clear()
+    try:
+        async with AsyncClient(
+            transport=transport,
+            base_url="http://testserver",
+            headers={"X-API-Key": "dev-api-key"},
+        ) as client:
+            yield client
+    finally:
+        app.dependency_overrides.clear()

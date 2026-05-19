@@ -29,7 +29,7 @@ async def create_crm_notification(db_session, event_id: str = "evt_delivery") ->
     return notification.id
 
 
-async def test_deliver_notification_marks_success(db_session, httpx_mock):
+async def test_deliver_notification_marks_success(db_session, httpx_mock, disable_dramatiq_enqueue):
     notification_id = await create_crm_notification(db_session)
     httpx_mock.add_response(status_code=200, json={"ok": True})
 
@@ -43,7 +43,7 @@ async def test_deliver_notification_marks_success(db_session, httpx_mock):
     assert attempts[0].response_status == 200
 
 
-async def test_deliver_notification_records_failure_and_raises(db_session, httpx_mock):
+async def test_deliver_notification_records_failure_and_raises(db_session, httpx_mock, disable_dramatiq_enqueue):
     notification_id = await create_crm_notification(db_session)
     httpx_mock.add_response(status_code=500, text="vendor down")
 
@@ -58,7 +58,9 @@ async def test_deliver_notification_records_failure_and_raises(db_session, httpx
     assert attempt.error_type == "http_status"
 
 
-async def test_deliver_notification_marks_failed_at_max_attempts(db_session, httpx_mock, monkeypatch):
+async def test_deliver_notification_marks_failed_at_max_attempts(
+    db_session, httpx_mock, monkeypatch, disable_dramatiq_enqueue
+):
     notification_id = await create_crm_notification(db_session)
     monkeypatch.setenv("DEFAULT_MAX_ATTEMPTS", "1")
     from app.config import get_settings
@@ -74,7 +76,7 @@ async def test_deliver_notification_marks_failed_at_max_attempts(db_session, htt
     get_settings.cache_clear()
 
 
-async def test_deliver_notification_exits_when_already_delivered(db_session, httpx_mock):
+async def test_deliver_notification_exits_when_already_delivered(db_session, httpx_mock, disable_dramatiq_enqueue):
     notification_id = await create_crm_notification(db_session)
     notification = await db_session.get(Notification, notification_id)
     notification.status = NotificationStatus.delivered

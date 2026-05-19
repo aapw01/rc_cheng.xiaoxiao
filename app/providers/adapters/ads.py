@@ -8,9 +8,11 @@ class AdsAdapter(ProviderAdapter):
     provider_code = "ads"
     supported_event_types = {"user_registered"}
 
-    def __init__(self, base_url: str = "https://ads.vendor.test", bearer_token: str | None = None) -> None:
+    def __init__(self, base_url: str | None = None, bearer_token: str | None = None) -> None:
+        settings = get_settings()
+        base_url = base_url or settings.provider_ads_base_url
         self.base_url = base_url.rstrip("/")
-        self.bearer_token = bearer_token or get_settings().provider_ads_bearer_token
+        self.bearer_token = bearer_token or settings.provider_ads_bearer_token
 
     def build_request(self, event_type: str, payload: dict[str, Any]) -> AdapterRequest:
         self.ensure_supported(event_type)
@@ -29,4 +31,3 @@ class AdsAdapter(ProviderAdapter):
                 "campaign_id": payload.get("campaign_id"),
             },
         )
-
