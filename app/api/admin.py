@@ -13,6 +13,7 @@ from app.models import DeliveryAttempt, Notification, NotificationStatus, Operat
 from app.schemas import ApiResponse
 from app.security import require_api_key
 from app.services.metrics import dashboard_metrics
+from app.tasks.delivery import actor_for_queue
 
 router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(require_api_key)])
 ProviderCodeQuery = Annotated[str | None, Query()]
@@ -121,6 +122,7 @@ async def retry_notification(
         raise AppError(status_code=404, code="notification_not_found", message="Notification not found")
     if notification.status != NotificationStatus.failed:
         raise AppError(status_code=409, code="notification_not_failed", message="Only failed notifications can retry")
+    provider = await get_provider(session, notification.provider_code)
     previous = {"status": notification.status.value}
     notification.status = NotificationStatus.pending
     notification.last_error = None
@@ -135,6 +137,7 @@ async def retry_notification(
         )
     )
     await session.commit()
+    actor_for_queue(provider.queue_name).send(str(notification_id))
     return ApiResponse(data=serialize_notification(notification).model_dump(mode="json"))
 
 

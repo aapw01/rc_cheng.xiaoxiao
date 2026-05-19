@@ -90,7 +90,15 @@ async def test_admin_notification_detail_includes_attempts(api_client, db_sessio
     assert data["attempts"][0]["response_status"] == 500
 
 
-async def test_admin_retry_failed_notification(api_client, db_session):
+async def test_admin_retry_failed_notification(api_client, db_session, monkeypatch):
+    sent_messages = []
+
+    class FakeActor:
+        @staticmethod
+        def send(notification_id: str) -> None:
+            sent_messages.append(notification_id)
+
+    monkeypatch.setattr("app.api.admin.actor_for_queue", lambda queue_name: FakeActor)
     notification = await create_notification(db_session)
     notification.status = NotificationStatus.failed
     await db_session.commit()
@@ -100,3 +108,4 @@ async def test_admin_retry_failed_notification(api_client, db_session):
 
     assert response.status_code == 200
     assert notification.status == NotificationStatus.pending
+    assert sent_messages == [str(notification.id)]
