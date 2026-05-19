@@ -29,11 +29,12 @@ async def create_crm_notification(db_session, event_id: str = "evt_delivery") ->
     return notification.id
 
 
-async def test_deliver_notification_marks_success(db_session, httpx_mock, disable_dramatiq_enqueue):
+async def test_deliver_notification_marks_success(db_session, httpx_mock, disable_dramatiq_enqueue, caplog):
     notification_id = await create_crm_notification(db_session)
     httpx_mock.add_response(status_code=200, json={"ok": True})
 
-    await deliver_notification(db_session, notification_id)
+    with caplog.at_level("INFO", logger="app.services.delivery"):
+        await deliver_notification(db_session, notification_id)
 
     notification = await db_session.get(Notification, notification_id)
     attempts = (await db_session.scalars(select(DeliveryAttempt))).all()
@@ -41,6 +42,7 @@ async def test_deliver_notification_marks_success(db_session, httpx_mock, disabl
     assert notification.attempt_count == 1
     assert len(attempts) == 1
     assert attempts[0].response_status == 200
+    assert any(record.message == "notification_delivery_succeeded" for record in caplog.records)
 
 
 async def test_deliver_notification_records_failure_and_raises(db_session, httpx_mock, disable_dramatiq_enqueue):

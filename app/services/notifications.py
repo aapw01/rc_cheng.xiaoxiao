@@ -1,3 +1,4 @@
+import logging
 from uuid import UUID
 
 from sqlalchemy import select
@@ -10,6 +11,8 @@ from app.providers.base import ProviderAdapterError
 from app.providers.registry import get_adapter
 from app.schemas import NotificationCreate
 from app.tasks.delivery import actor_for_queue
+
+logger = logging.getLogger(__name__)
 
 
 async def submit_notification(session: AsyncSession, payload: NotificationCreate) -> Notification:
@@ -44,13 +47,32 @@ async def submit_notification(session: AsyncSession, payload: NotificationCreate
             return existing
         raise
     await session.refresh(notification)
+    trace_id = payload.metadata.get("trace_id")
     try:
         actor_for_queue(provider.queue_name).send(str(notification.id))
     except Exception as exc:
         notification.status = NotificationStatus.failed
         notification.last_error = "enqueue_failed"
         await session.commit()
+        logger.exception(
+            "notification_enqueue_failed",
+            extra={
+                "notification_id": str(notification.id),
+                "provider_code": notification.provider_code,
+                "event_type": notification.event_type,
+                "trace_id": trace_id,
+            },
+        )
         raise AppError(status_code=503, code="enqueue_failed", message="Failed to enqueue notification") from exc
+    logger.info(
+        "notification_enqueued",
+        extra={
+            "notification_id": str(notification.id),
+            "provider_code": notification.provider_code,
+            "event_type": notification.event_type,
+            "trace_id": trace_id,
+        },
+    )
     return notification
 
 

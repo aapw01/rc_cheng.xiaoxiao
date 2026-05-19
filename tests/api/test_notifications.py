@@ -3,7 +3,7 @@ from sqlalchemy import select
 from app.models import Notification, NotificationStatus, Provider
 
 
-async def test_submit_notification_returns_accepted(api_client, monkeypatch):
+async def test_submit_notification_returns_accepted(api_client, monkeypatch, caplog):
     sent_messages = []
 
     class FakeActor:
@@ -13,23 +13,24 @@ async def test_submit_notification_returns_accepted(api_client, monkeypatch):
 
     monkeypatch.setattr("app.services.notifications.actor_for_queue", lambda queue_name: FakeActor)
 
-    response = await api_client.post(
-        "/api/notifications",
-        json={
-            "provider_code": "crm",
-            "event_type": "subscription_paid",
-            "event_id": "evt_1",
-            "payload": {
-                "user_id": "u_123",
-                "email": "alice@example.com",
-                "subscription_id": "sub_1",
-                "amount": 19900,
-                "currency": "USD",
-                "paid_at": "2026-05-19T10:00:00Z",
+    with caplog.at_level("INFO", logger="app.services.notifications"):
+        response = await api_client.post(
+            "/api/notifications",
+            json={
+                "provider_code": "crm",
+                "event_type": "subscription_paid",
+                "event_id": "evt_1",
+                "payload": {
+                    "user_id": "u_123",
+                    "email": "alice@example.com",
+                    "subscription_id": "sub_1",
+                    "amount": 19900,
+                    "currency": "USD",
+                    "paid_at": "2026-05-19T10:00:00Z",
+                },
+                "metadata": {"source_system": "billing", "trace_id": "trace_1"},
             },
-            "metadata": {"source_system": "billing", "trace_id": "trace_1"},
-        },
-    )
+        )
 
     assert response.status_code == 202
     data = response.json()["data"]
@@ -37,6 +38,7 @@ async def test_submit_notification_returns_accepted(api_client, monkeypatch):
     assert data["status"] == "pending"
     assert data["event_id"] == "evt_1"
     assert sent_messages == [data["id"]]
+    assert any(record.message == "notification_enqueued" for record in caplog.records)
 
 
 async def test_submit_notification_marks_failed_when_enqueue_fails(api_client, db_session, monkeypatch):
