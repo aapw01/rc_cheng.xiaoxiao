@@ -5,7 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.errors import AppError
-from app.models import Notification, Provider
+from app.models import Notification, NotificationStatus, Provider
 from app.providers.base import ProviderAdapterError
 from app.providers.registry import get_adapter
 from app.schemas import NotificationCreate
@@ -44,7 +44,13 @@ async def submit_notification(session: AsyncSession, payload: NotificationCreate
             return existing
         raise
     await session.refresh(notification)
-    actor_for_queue(provider.queue_name).send(str(notification.id))
+    try:
+        actor_for_queue(provider.queue_name).send(str(notification.id))
+    except Exception as exc:
+        notification.status = NotificationStatus.failed
+        notification.last_error = "enqueue_failed"
+        await session.commit()
+        raise AppError(status_code=503, code="enqueue_failed", message="Failed to enqueue notification") from exc
     return notification
 
 

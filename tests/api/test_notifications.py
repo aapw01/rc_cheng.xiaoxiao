@@ -1,6 +1,6 @@
 from sqlalchemy import select
 
-from app.models import Provider
+from app.models import Notification, NotificationStatus, Provider
 
 
 async def test_submit_notification_returns_accepted(api_client, monkeypatch):
@@ -37,6 +37,38 @@ async def test_submit_notification_returns_accepted(api_client, monkeypatch):
     assert data["status"] == "pending"
     assert data["event_id"] == "evt_1"
     assert sent_messages == [data["id"]]
+
+
+async def test_submit_notification_marks_failed_when_enqueue_fails(api_client, db_session, monkeypatch):
+    class BrokenActor:
+        @staticmethod
+        def send(notification_id: str) -> None:
+            raise RuntimeError("redis unavailable")
+
+    monkeypatch.setattr("app.services.notifications.actor_for_queue", lambda queue_name: BrokenActor)
+
+    response = await api_client.post(
+        "/api/notifications",
+        json={
+            "provider_code": "crm",
+            "event_type": "subscription_paid",
+            "event_id": "evt_enqueue_failed",
+            "payload": {
+                "user_id": "u_123",
+                "email": "alice@example.com",
+                "subscription_id": "sub_1",
+                "amount": 19900,
+                "currency": "USD",
+                "paid_at": "2026-05-19T10:00:00Z",
+            },
+        },
+    )
+
+    assert response.status_code == 503
+    assert response.json()["code"] == "enqueue_failed"
+    notification = await db_session.scalar(select(Notification).where(Notification.event_id == "evt_enqueue_failed"))
+    assert notification.status == NotificationStatus.failed
+    assert notification.last_error == "enqueue_failed"
 
 
 async def test_duplicate_submission_returns_existing_notification(api_client):
