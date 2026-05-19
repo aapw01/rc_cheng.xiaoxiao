@@ -130,14 +130,14 @@ PROVIDER_SEEDS = [
     {
         "provider_code": "example",
         "display_name": "Example Provider",
-        "queue_name": "notifications:example",
+        "queue_name": "notifications_example",
         "enabled": True,
         "paused": False,
     },
 ]
 ```
 
-如果是新增供应商，运行 seed 脚本后还需要重启 worker，让 worker 能监听到新的 queue（详见设计文档第 8 节）。
+如果是新增供应商，运行 seed 脚本后还需要新增对应 actor 或映射到已有队列池，并重启 worker，让 worker 能监听到新的 queue（详见设计文档第 8 节）。
 
 ## 8. 供应商认证凭证
 

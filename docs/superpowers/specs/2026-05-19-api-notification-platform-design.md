@@ -162,9 +162,9 @@ app/providers/
 第一版给示例供应商配置独立队列：
 
 ```text
-notifications:crm
-notifications:ads
-notifications:inventory
+notifications_crm
+notifications_ads
+notifications_inventory
 ```
 
 这样一个供应商长期失败时，不会阻塞其他供应商的任务消费，也更容易观察某个供应商的堆积情况。
