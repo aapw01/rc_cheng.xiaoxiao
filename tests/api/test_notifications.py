@@ -1,6 +1,7 @@
 from sqlalchemy import select
 
 from app.models import Notification, NotificationStatus, Provider
+from app.security import require_api_key
 
 
 async def test_submit_notification_returns_accepted(api_client, monkeypatch, caplog):
@@ -109,6 +110,30 @@ async def test_unknown_provider_is_rejected(api_client):
 
     assert response.status_code == 404
     assert response.json()["code"] == "provider_not_found"
+
+
+async def test_invalid_api_key_is_rejected(api_client):
+    response = await api_client.get(
+        "/api/notifications/00000000-0000-0000-0000-000000000000",
+        headers={"X-API-Key": "bad-key"},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["code"] == "unauthorized"
+
+
+async def test_api_key_comparison_uses_compare_digest(monkeypatch):
+    compared = {}
+
+    def fake_compare_digest(left: str, right: str) -> bool:
+        compared["args"] = (left, right)
+        return True
+
+    monkeypatch.setattr("secrets.compare_digest", fake_compare_digest)
+
+    await require_api_key("dev-api-key")
+
+    assert compared["args"] == ("dev-api-key", "dev-api-key")
 
 
 async def test_validation_error_uses_api_response_shape(api_client):
