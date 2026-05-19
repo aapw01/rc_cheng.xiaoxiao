@@ -58,6 +58,21 @@ async def test_deliver_notification_records_failure_and_raises(db_session, httpx
     assert attempt.error_type == "http_status"
 
 
+async def test_deliver_notification_marks_adapter_error_failed_without_retry(db_session, disable_dramatiq_enqueue):
+    notification_id = await create_crm_notification(db_session)
+    notification = await db_session.get(Notification, notification_id)
+    notification.payload = {"email": "alice@example.com"}
+    await db_session.commit()
+
+    await deliver_notification(db_session, notification_id)
+
+    await db_session.refresh(notification)
+    attempt = await db_session.scalar(select(DeliveryAttempt))
+    assert notification.status == NotificationStatus.failed
+    assert notification.attempt_count == 1
+    assert attempt.error_type == "adapter_error"
+
+
 async def test_deliver_notification_marks_failed_at_max_attempts(
     db_session, httpx_mock, monkeypatch, disable_dramatiq_enqueue
 ):

@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.models import DeliveryAttempt, Notification, NotificationStatus
+from app.providers.base import ProviderAdapterError
 from app.providers.registry import get_adapter
 
 
@@ -21,16 +22,26 @@ async def deliver_notification(session: AsyncSession, notification_id: UUID | st
         return
 
     attempt_number = notification.attempt_count + 1
-    adapter = get_adapter(notification.provider_code)
-    request = adapter.build_request(notification.event_type, notification.payload)
     attempt = DeliveryAttempt(
         notification_id=notification.id,
         attempt_number=attempt_number,
-        request_method=request.method,
-        request_url=request.url,
         started_at=datetime.now(UTC),
     )
     session.add(attempt)
+    adapter = get_adapter(notification.provider_code)
+    try:
+        request = adapter.build_request(notification.event_type, notification.payload)
+    except ProviderAdapterError as exc:
+        attempt.error_type = "adapter_error"
+        attempt.error_message = str(exc)
+        attempt.finished_at = datetime.now(UTC)
+        notification.attempt_count = attempt_number
+        notification.status = NotificationStatus.failed
+        notification.last_error = str(exc)
+        await session.commit()
+        return
+    attempt.request_method = request.method
+    attempt.request_url = request.url
 
     try:
         async with httpx.AsyncClient(timeout=get_settings().http_request_timeout_seconds) as client:
