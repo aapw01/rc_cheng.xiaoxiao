@@ -109,6 +109,14 @@ async def test_unknown_provider_is_rejected(api_client):
     assert response.json()["code"] == "provider_not_found"
 
 
+async def test_validation_error_uses_api_response_shape(api_client):
+    response = await api_client.post("/api/notifications", json={"provider_code": "crm"})
+
+    assert response.status_code == 422
+    assert set(response.json()) == {"code", "message", "data"}
+    assert response.json()["code"] == "validation_error"
+
+
 async def test_payload_too_large_is_rejected(api_client, monkeypatch):
     monkeypatch.setenv("MAX_PAYLOAD_BYTES", "128")
     from app.config import get_settings
