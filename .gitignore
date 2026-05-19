@@ -1,0 +1,17 @@
+.env
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.pyc
+*.pyo
+*.pyd
+dist/
+build/
+htmlcov/
+.coverage
+web/node_modules/
+web/dist/
+web/tsconfig.tsbuildinfo
+*.log
