@@ -9,13 +9,6 @@ ADAPTERS: dict[str, type[ProviderAdapter]] = {
     InventoryAdapter.provider_code: InventoryAdapter,
 }
 
-QUEUE_TO_PROVIDER: dict[str, str] = {
-    "notifications_crm": "crm",
-    "notifications_ads": "ads",
-    "notifications_inventory": "inventory",
-}
-
-
 def get_adapter(provider_code: str) -> ProviderAdapter:
     adapter_type = ADAPTERS.get(provider_code)
     if adapter_type is None:
