@@ -1,0 +1,49 @@
+body {
+  margin: 0;
+  background: #f6f8fb;
+}
+
+.app-shell {
+  min-height: 100vh;
+}
+
+.app-sider {
+  background: #111827 !important;
+}
+
+.brand {
+  color: #ffffff !important;
+  padding: 20px 20px 8px;
+  margin: 0 !important;
+}
+
+.app-header {
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  height: 56px;
+  line-height: 56px;
+  padding: 0 24px;
+}
+
+.app-content {
+  padding: 24px;
+}
+
+.section-card {
+  margin-top: 16px;
+}
+
+.toolbar {
+  margin: 16px 0;
+}
+
+.detail-header {
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
