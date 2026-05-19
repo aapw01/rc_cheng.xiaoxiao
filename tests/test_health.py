@@ -2,8 +2,7 @@ import pytest
 from fastapi import APIRouter
 from fastapi.testclient import TestClient
 
-from app.config import get_settings
-from app.config import Settings
+from app.config import Settings, get_settings
 from app.main import app
 
 router = APIRouter()
