@@ -7,6 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     app_env: str = "local"
     api_key: str = "dev-api-key"
+    cors_allowed_origins: str = ""
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/notifications"
     redis_url: str = "redis://localhost:6379/0"
     default_max_attempts: int = Field(default=6, ge=-1)
@@ -21,6 +22,14 @@ class Settings(BaseSettings):
     provider_inventory_base_url: str = "https://inventory.vendor.test"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    def effective_cors_allowed_origins(self) -> list[str]:
+        configured = [origin.strip() for origin in self.cors_allowed_origins.split(",") if origin.strip()]
+        if configured:
+            return configured
+        if self.app_env == "production":
+            return []
+        return ["http://localhost:5173", "http://127.0.0.1:5173"]
 
 
 @lru_cache

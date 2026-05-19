@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from fastapi.testclient import TestClient
 
 from app.config import get_settings
+from app.config import Settings
 from app.main import app
 
 router = APIRouter()
@@ -52,3 +53,9 @@ def test_production_rejects_default_api_key(monkeypatch):
         pass
 
     get_settings.cache_clear()
+
+
+def test_production_cors_defaults_do_not_allow_localhost():
+    settings = Settings(app_env="production", api_key="prod-key")
+
+    assert settings.effective_cors_allowed_origins() == []
