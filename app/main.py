@@ -1,3 +1,5 @@
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -13,7 +15,16 @@ from app.errors import error_response, install_error_handlers
 WEB_DIST_DIR = Path(__file__).resolve().parent.parent / "web" / "dist"
 WEB_INDEX_FILE = WEB_DIST_DIR / "index.html"
 
-app = FastAPI(title="API Notification Delivery Platform")
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    settings = get_settings()
+    if settings.app_env == "production" and settings.api_key == "dev-api-key":
+        raise RuntimeError("API_KEY must be configured in production")
+    yield
+
+
+app = FastAPI(title="API Notification Delivery Platform", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],

@@ -1,6 +1,8 @@
+import pytest
 from fastapi import APIRouter
 from fastapi.testclient import TestClient
 
+from app.config import get_settings
 from app.main import app
 
 router = APIRouter()
@@ -39,3 +41,14 @@ def test_unhandled_error_uses_api_response_shape():
 
     assert response.status_code == 500
     assert response.json() == {"code": "internal_error", "message": "Internal server error", "data": None}
+
+
+def test_production_rejects_default_api_key(monkeypatch):
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("API_KEY", "dev-api-key")
+    get_settings.cache_clear()
+
+    with pytest.raises(RuntimeError, match="API_KEY"), TestClient(app):
+        pass
+
+    get_settings.cache_clear()
