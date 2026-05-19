@@ -93,6 +93,25 @@ async def test_deliver_notification_marks_failed_at_max_attempts(
     get_settings.cache_clear()
 
 
+async def test_deliver_notification_retries_forever_without_marking_failed(
+    db_session, httpx_mock, monkeypatch, disable_dramatiq_enqueue
+):
+    notification_id = await create_crm_notification(db_session)
+    monkeypatch.setenv("DEFAULT_MAX_ATTEMPTS", "-1")
+    from app.config import get_settings
+
+    get_settings.cache_clear()
+    httpx_mock.add_response(status_code=500, text="vendor down")
+
+    with pytest.raises(DeliveryFailedError):
+        await deliver_notification(db_session, notification_id)
+
+    notification = await db_session.get(Notification, notification_id)
+    assert notification.status == NotificationStatus.retrying
+    assert notification.attempt_count == 1
+    get_settings.cache_clear()
+
+
 async def test_deliver_notification_exits_when_already_delivered(db_session, httpx_mock, disable_dramatiq_enqueue):
     notification_id = await create_crm_notification(db_session)
     notification = await db_session.get(Notification, notification_id)
