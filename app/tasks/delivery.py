@@ -7,6 +7,9 @@ from app.services.delivery import deliver_notification
 
 from .broker import redis_broker as redis_broker
 
+MIN_RETRY_BACKOFF_MS = 60_000
+MAX_RETRY_BACKOFF_MS = 3_600_000
+
 
 def max_retries() -> int | None:
     from app.config import get_settings
@@ -22,17 +25,32 @@ async def _deliver(notification_id: str) -> None:
         await deliver_notification(session, UUID(notification_id))
 
 
-@dramatiq.actor(queue_name="notifications_crm", max_retries=max_retries())
+@dramatiq.actor(
+    queue_name="notifications_crm",
+    max_retries=max_retries(),
+    min_backoff=MIN_RETRY_BACKOFF_MS,
+    max_backoff=MAX_RETRY_BACKOFF_MS,
+)
 async def deliver_crm_notification(notification_id: str) -> None:
     await _deliver(notification_id)
 
 
-@dramatiq.actor(queue_name="notifications_ads", max_retries=max_retries())
+@dramatiq.actor(
+    queue_name="notifications_ads",
+    max_retries=max_retries(),
+    min_backoff=MIN_RETRY_BACKOFF_MS,
+    max_backoff=MAX_RETRY_BACKOFF_MS,
+)
 async def deliver_ads_notification(notification_id: str) -> None:
     await _deliver(notification_id)
 
 
-@dramatiq.actor(queue_name="notifications_inventory", max_retries=max_retries())
+@dramatiq.actor(
+    queue_name="notifications_inventory",
+    max_retries=max_retries(),
+    min_backoff=MIN_RETRY_BACKOFF_MS,
+    max_backoff=MAX_RETRY_BACKOFF_MS,
+)
 async def deliver_inventory_notification(notification_id: str) -> None:
     await _deliver(notification_id)
 
