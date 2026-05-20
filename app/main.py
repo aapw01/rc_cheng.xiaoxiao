@@ -16,11 +16,21 @@ WEB_DIST_DIR = Path(__file__).resolve().parent.parent / "web" / "dist"
 WEB_INDEX_FILE = WEB_DIST_DIR / "index.html"
 
 
+PRODUCTION_SENTINEL_VALUES = {
+    "API_KEY": "dev-api-key",
+    "PROVIDER_CRM_API_KEY": "dev-crm-key",
+    "PROVIDER_ADS_BEARER_TOKEN": "dev-ads-token",
+    "PROVIDER_INVENTORY_API_KEY": "dev-inventory-key",
+}
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
-    if settings.app_env == "production" and settings.api_key == "dev-api-key":
-        raise RuntimeError("API_KEY must be configured in production")
+    if settings.app_env == "production":
+        for env_name, sentinel in PRODUCTION_SENTINEL_VALUES.items():
+            if getattr(settings, env_name.lower()) == sentinel:
+                raise RuntimeError(f"{env_name} must be configured in production")
     yield
 
 
