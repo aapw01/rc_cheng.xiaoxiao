@@ -2,26 +2,38 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: notifications
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${POSTGRES_DB:-notifications}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
 
   redis:
     image: redis:7-alpine
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
 
   mock-vendor:
-    image: notification-platform:local
+    image: ${IMAGE:-notification-platform:local}
+    build:
+      context: .
+    profiles:
+      - mock
     command: uv run python scripts/mock_vendor.py
 
   db-setup:
-    image: notification-platform:local
+    image: ${IMAGE:-notification-platform:local}
+    build:
+      context: .
+    env_file:
+      - path: .env
+        required: false
     environment:
-      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/notifications
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-notifications}
       REDIS_URL: redis://redis:6379/0
-      API_KEY: dev-api-key
-      PROVIDER_CRM_BASE_URL: http://mock-vendor:9000
+      API_KEY: ${API_KEY:-dev-api-key}
     depends_on:
       - postgres
       - redis
@@ -31,31 +43,37 @@ services:
       uv run python -m scripts.seed_providers"
 
   api:
-    image: notification-platform:local
+    image: ${IMAGE:-notification-platform:local}
+    build:
+      context: .
+    env_file:
+      - path: .env
+        required: false
     environment:
-      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/notifications
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-notifications}
       REDIS_URL: redis://redis:6379/0
-      API_KEY: dev-api-key
-      PROVIDER_CRM_BASE_URL: http://mock-vendor:9000
+      API_KEY: ${API_KEY:-dev-api-key}
     depends_on:
       db-setup:
         condition: service_completed_successfully
     ports:
-      - "18000:8000"
+      - "${API_PORT:-18000}:8000"
     command: uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
 
   worker:
-    image: notification-platform:local
+    image: ${IMAGE:-notification-platform:local}
+    build:
+      context: .
+    env_file:
+      - path: .env
+        required: false
     environment:
-      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/notifications
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-notifications}
       REDIS_URL: redis://redis:6379/0
-      API_KEY: dev-api-key
-      PROVIDER_CRM_BASE_URL: http://mock-vendor:9000
+      API_KEY: ${API_KEY:-dev-api-key}
     depends_on:
       db-setup:
         condition: service_completed_successfully
-      mock-vendor:
-        condition: service_started
     command: uv run python -m scripts.run_worker
 
 volumes:

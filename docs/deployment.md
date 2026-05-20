@@ -4,7 +4,7 @@
 
 ```bash
 cp .env.example .env
-docker compose up --build
+docker compose -f docker-compose.e2e.yml up --build
 ```
 
 Compose 会先启动一次性 `db-setup` 服务，自动执行 `alembic upgrade head` 并初始化供应商种子数据；`api` 和 `worker` 会等它成功完成后再启动。
@@ -12,21 +12,28 @@ Compose 会先启动一次性 `db-setup` 服务，自动执行 `alembic upgrade 
 生产镜像里已经包含 React 运维 UI，访问：
 
 ```text
-http://localhost:8000/ops
+http://localhost:18000/ops
 ```
 
 `/ops` 入口有独立的运维密码保护，默认读取环境变量 `OPS_PASSWORD`。本地开发可以沿用 `.env.example` 中的默认值，真实环境应改成仅运维人员可知的强密码。
 
-## 本地镜像验收环境
+## 统一 Compose 文件
 
-如果本机已有 PostgreSQL 或 Redis 占用端口，可以使用不暴露数据库端口的验收 Compose：
+项目只保留一个 `docker-compose.e2e.yml`，同时覆盖本地测试和部署验证：
+
+| 场景 | 命令 | 说明 |
+|---|---|---|
+| 本地构建并启动 | `docker compose -f docker-compose.e2e.yml up --build` | 默认构建 `notification-platform:local` |
+| 使用 GitHub Actions 镜像 | `IMAGE=ghcr.io/aapw01/rc_cheng.xiaoxiao:master docker compose -f docker-compose.e2e.yml up -d --no-build` | 不依赖本地源码构建 |
+| 端到端 mock vendor 测试 | `PROVIDER_CRM_BASE_URL=http://mock-vendor:9000 docker compose -f docker-compose.e2e.yml --profile mock up --build` | 额外启动 `mock-vendor` |
+
+默认 API 映射到 `http://127.0.0.1:18000`。如果需要改端口：
 
 ```bash
-docker build -t notification-platform:local .
-docker compose -f docker-compose.e2e.yml -p rc-notify-e2e up -d
+API_PORT=8000 docker compose -f docker-compose.e2e.yml up --build
 ```
 
-该环境会额外启动 `mock-vendor`，并自动迁移数据库和初始化供应商数据，用于验证 worker 对下游 HTTP API 的真实投递链路。API 映射到 `http://127.0.0.1:18000`。
+`POSTGRES_PORT` 默认 `5432`，`REDIS_PORT` 默认 `6379`。如果本机端口冲突，可以改成 `POSTGRES_PORT=15432 REDIS_PORT=16379`。
 
 ## 服务
 
