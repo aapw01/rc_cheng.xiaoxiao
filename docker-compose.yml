@@ -21,7 +21,7 @@ services:
       context: .
     profiles:
       - mock
-    command: uv run python scripts/mock_vendor.py
+    command: .venv/bin/python scripts/mock_vendor.py
 
   db-setup:
     image: ${IMAGE:-notification-platform:local}
@@ -34,13 +34,19 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-notifications}
       REDIS_URL: redis://redis:6379/0
       API_KEY: ${API_KEY:-dev-api-key}
+      PROVIDER_CRM_API_KEY: ${PROVIDER_CRM_API_KEY:-dev-crm-key}
+      PROVIDER_CRM_BASE_URL: ${PROVIDER_CRM_BASE_URL:-https://crm.vendor.test}
+      PROVIDER_ADS_BEARER_TOKEN: ${PROVIDER_ADS_BEARER_TOKEN:-dev-ads-token}
+      PROVIDER_ADS_BASE_URL: ${PROVIDER_ADS_BASE_URL:-https://ads.vendor.test}
+      PROVIDER_INVENTORY_API_KEY: ${PROVIDER_INVENTORY_API_KEY:-dev-inventory-key}
+      PROVIDER_INVENTORY_BASE_URL: ${PROVIDER_INVENTORY_BASE_URL:-https://inventory.vendor.test}
     depends_on:
       - postgres
       - redis
     restart: "no"
     command: >
-      sh -c "uv run alembic upgrade head &&
-      uv run python -m scripts.seed_providers"
+      sh -c ".venv/bin/alembic upgrade head &&
+      .venv/bin/python -m scripts.seed_providers"
 
   api:
     image: ${IMAGE:-notification-platform:local}
@@ -53,12 +59,18 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-notifications}
       REDIS_URL: redis://redis:6379/0
       API_KEY: ${API_KEY:-dev-api-key}
+      PROVIDER_CRM_API_KEY: ${PROVIDER_CRM_API_KEY:-dev-crm-key}
+      PROVIDER_CRM_BASE_URL: ${PROVIDER_CRM_BASE_URL:-https://crm.vendor.test}
+      PROVIDER_ADS_BEARER_TOKEN: ${PROVIDER_ADS_BEARER_TOKEN:-dev-ads-token}
+      PROVIDER_ADS_BASE_URL: ${PROVIDER_ADS_BASE_URL:-https://ads.vendor.test}
+      PROVIDER_INVENTORY_API_KEY: ${PROVIDER_INVENTORY_API_KEY:-dev-inventory-key}
+      PROVIDER_INVENTORY_BASE_URL: ${PROVIDER_INVENTORY_BASE_URL:-https://inventory.vendor.test}
     depends_on:
       db-setup:
         condition: service_completed_successfully
     ports:
       - "${API_PORT:-18000}:8000"
-    command: uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
+    command: .venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
 
   worker:
     image: ${IMAGE:-notification-platform:local}
@@ -71,10 +83,16 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-notifications}
       REDIS_URL: redis://redis:6379/0
       API_KEY: ${API_KEY:-dev-api-key}
+      PROVIDER_CRM_API_KEY: ${PROVIDER_CRM_API_KEY:-dev-crm-key}
+      PROVIDER_CRM_BASE_URL: ${PROVIDER_CRM_BASE_URL:-https://crm.vendor.test}
+      PROVIDER_ADS_BEARER_TOKEN: ${PROVIDER_ADS_BEARER_TOKEN:-dev-ads-token}
+      PROVIDER_ADS_BASE_URL: ${PROVIDER_ADS_BASE_URL:-https://ads.vendor.test}
+      PROVIDER_INVENTORY_API_KEY: ${PROVIDER_INVENTORY_API_KEY:-dev-inventory-key}
+      PROVIDER_INVENTORY_BASE_URL: ${PROVIDER_INVENTORY_BASE_URL:-https://inventory.vendor.test}
     depends_on:
       db-setup:
         condition: service_completed_successfully
-    command: uv run python -m scripts.run_worker
+    command: .venv/bin/python -m scripts.run_worker
 
 volumes:
   postgres_data:

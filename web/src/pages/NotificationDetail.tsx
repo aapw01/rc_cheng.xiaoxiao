@@ -1,3 +1,4 @@
+import { RefreshCw } from "lucide-react";
 import { Button, Card, Descriptions, Space, Table, Typography, message } from "antd";
 import { useEffect, useState } from "react";
 import { Attempt, getNotification, NotificationItem, retryNotification } from "../api";
@@ -12,8 +13,16 @@ const STATUS_LABELS: Record<string, string> = {
 
 export default function NotificationDetail({ id, onBack }: { id: string; onBack: () => void }) {
   const [item, setItem] = useState<(NotificationItem & { attempts: Attempt[] }) | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const load = () => getNotification(id).then(setItem);
+  const load = async () => {
+    setLoading(true);
+    try {
+      setItem(await getNotification(id));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     load();
@@ -32,6 +41,9 @@ export default function NotificationDetail({ id, onBack }: { id: string; onBack:
       <Space className="detail-header">
         <Button onClick={onBack}>返回</Button>
         <Typography.Title level={3}>通知详情</Typography.Title>
+        <Button icon={<RefreshCw size={16} />} loading={loading} onClick={load}>
+          刷新
+        </Button>
       </Space>
       <Descriptions bordered column={2} size="small">
         <Descriptions.Item label="ID">{item.id}</Descriptions.Item>
@@ -55,6 +67,7 @@ export default function NotificationDetail({ id, onBack }: { id: string; onBack:
       <Table
         rowKey="id"
         dataSource={item.attempts}
+        loading={loading}
         columns={[
           { title: "次数", dataIndex: "attempt_number" },
           { title: "方法", dataIndex: "request_method" },

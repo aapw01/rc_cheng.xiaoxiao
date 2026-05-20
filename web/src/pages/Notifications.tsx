@@ -1,3 +1,4 @@
+import { RefreshCw } from "lucide-react";
 import { Button, Card, Select, Space, Table, Tag, Typography } from "antd";
 import { useEffect, useState } from "react";
 import { getNotifications, getProviders, NotificationItem, Provider } from "../api";
@@ -20,17 +21,23 @@ export default function Notifications({ onOpen }: { onOpen: (id: string) => void
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [loading, setLoading] = useState(false);
 
-  const load = () =>
-    getNotifications({
-      provider_code: provider,
-      status,
-      limit: pageSize,
-      offset: (page - 1) * pageSize
-    }).then((data) => {
+  const load = async () => {
+    setLoading(true);
+    try {
+      const data = await getNotifications({
+        provider_code: provider,
+        status,
+        limit: pageSize,
+        offset: (page - 1) * pageSize
+      });
       setItems(data.items);
       setTotal(data.total);
-    });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     getProviders().then(setProviders);
@@ -42,7 +49,12 @@ export default function Notifications({ onOpen }: { onOpen: (id: string) => void
 
   return (
     <Card>
-      <Typography.Title level={3}>通知任务</Typography.Title>
+      <Space className="page-title-row">
+        <Typography.Title level={3}>通知任务</Typography.Title>
+        <Button icon={<RefreshCw size={16} />} loading={loading} onClick={load}>
+          刷新
+        </Button>
+      </Space>
       <Space className="toolbar">
         <Select
           allowClear
@@ -70,6 +82,7 @@ export default function Notifications({ onOpen }: { onOpen: (id: string) => void
       <Table
         rowKey="id"
         dataSource={items}
+        loading={loading}
         columns={[
           { title: "供应商", dataIndex: "provider_code" },
           { title: "事件类型", dataIndex: "event_type" },

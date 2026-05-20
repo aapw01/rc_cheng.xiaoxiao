@@ -1,11 +1,20 @@
+import { RefreshCw } from "lucide-react";
 import { Button, Card, Space, Table, Tag, Typography, message } from "antd";
 import { useEffect, useState } from "react";
 import { getProviders, pauseProvider, Provider, resumeProvider } from "../api";
 
 export default function Providers() {
   const [providers, setProviders] = useState<Provider[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const load = () => getProviders().then(setProviders);
+  const load = async () => {
+    setLoading(true);
+    try {
+      setProviders(await getProviders());
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     load();
@@ -24,10 +33,16 @@ export default function Providers() {
 
   return (
     <Card>
-      <Typography.Title level={3}>供应商管理</Typography.Title>
+      <Space className="page-title-row">
+        <Typography.Title level={3}>供应商管理</Typography.Title>
+        <Button icon={<RefreshCw size={16} />} loading={loading} onClick={load}>
+          刷新
+        </Button>
+      </Space>
       <Table
         rowKey="provider_code"
         dataSource={providers}
+        loading={loading}
         columns={[
           { title: "供应商", dataIndex: "display_name" },
           { title: "编码", dataIndex: "provider_code" },

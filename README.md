@@ -61,6 +61,13 @@ curl -sS -X POST http://127.0.0.1:18000/api/notifications \
   }' | jq .
 ```
 
+查看投递结果：
+
+```bash
+curl -sS 'http://127.0.0.1:18000/api/admin/notifications/<notification_id>' \
+  -H 'X-API-Key: dev-api-key' | jq .
+```
+
 查询任务列表：
 
 ```bash

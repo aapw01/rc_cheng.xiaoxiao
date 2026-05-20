@@ -1,4 +1,5 @@
-import { Card, Table, Tag, Typography } from "antd";
+import { RefreshCw } from "lucide-react";
+import { Button, Card, Space, Table, Tag, Typography } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import { getMetrics, Metrics, Provider } from "../api";
 
@@ -12,9 +13,19 @@ type QueueRow = Provider & {
 
 export default function Dashboard() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      setMetrics(await getMetrics());
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    getMetrics().then(setMetrics);
+    load();
   }, []);
 
   const rows = useMemo<QueueRow[]>(() => {
@@ -36,11 +47,17 @@ export default function Dashboard() {
 
   return (
     <div>
-      <Typography.Title level={3}>队列概览</Typography.Title>
+      <Space className="page-title-row">
+        <Typography.Title level={3}>队列概览</Typography.Title>
+        <Button icon={<RefreshCw size={16} />} loading={loading} onClick={load}>
+          刷新
+        </Button>
+      </Space>
       <Card title="各队列任务状态">
         <Table
           rowKey="provider_code"
           dataSource={rows}
+          loading={loading}
           pagination={false}
           columns={[
             { title: "供应商", dataIndex: "display_name" },
