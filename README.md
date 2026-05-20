@@ -6,29 +6,89 @@
 
 ```bash
 cp .env.example .env
+PROVIDER_CRM_BASE_URL=http://mock-vendor:9000 docker compose --profile mock up --build
+```
+
+Docker 启动会自动执行 Alembic 迁移并初始化供应商种子数据。默认入口：
+
+| 服务 | 地址 |
+|---|---|
+| API | `http://localhost:18000` |
+| 运维 UI | `http://localhost:18000/ops` |
+| API 文档 | `http://localhost:18000/docs` |
+
+运维 UI 默认密码见 `.env` 的 `OPS_PASSWORD`。
+
+常用本地配置：
+
+| 变量 | 默认值 | 说明 |
+|---|---|---|
+| `API_KEY` | `dev-api-key` | 调用 API 时放到 `X-API-Key` |
+| `OPS_PASSWORD` | `dev-ops-password` | 登录 `/ops` 的运维密码 |
+| `API_PORT` | `18000` | API 和运维 UI 暴露端口 |
+| `POSTGRES_PORT` | `5432` | 本机 PostgreSQL 端口，冲突时可改 |
+| `REDIS_PORT` | `6379` | 本机 Redis 端口，冲突时可改 |
+
+## Curl 验证
+
+健康检查：
+
+```bash
+curl -fsS http://127.0.0.1:18000/health
+```
+
+提交通知：
+
+```bash
+curl -sS -X POST http://127.0.0.1:18000/api/notifications \
+  -H 'Content-Type: application/json' \
+  -H 'X-API-Key: dev-api-key' \
+  -d '{
+    "provider_code": "crm",
+    "event_type": "subscription_paid",
+    "event_id": "local_test_001",
+    "payload": {
+      "user_id": "u_123",
+      "email": "a@example.com",
+      "subscription_id": "sub_001",
+      "amount": 19900,
+      "currency": "USD",
+      "paid_at": "2026-05-19T10:00:00Z"
+    },
+    "metadata": {
+      "trace_id": "local_trace_001"
+    }
+  }' | jq .
+```
+
+查询任务列表：
+
+```bash
+curl -sS 'http://127.0.0.1:18000/api/admin/notifications?provider_code=crm&limit=5' \
+  -H 'X-API-Key: dev-api-key' | jq .
+```
+
+没有安装 `jq` 时，去掉命令末尾的 `| jq .` 即可。
+
+如果要换端口启动：
+
+```bash
+API_PORT=8000 POSTGRES_PORT=15432 REDIS_PORT=16379 \
+  PROVIDER_CRM_BASE_URL=http://mock-vendor:9000 \
+  docker compose --profile mock up --build
+```
+
+## 本地开发
+
+```bash
 uv sync
 npm --prefix web install
 docker compose up -d postgres redis
 uv run alembic upgrade head
 uv run python -m scripts.seed_providers
 uv run uvicorn app.main:app --reload
-```
-
-前端开发：
-
-```bash
 npm --prefix web run dev
 ```
-
-Docker 完整环境：
-
-```bash
-docker compose up --build
-```
-
-Docker 启动会自动执行 Alembic 迁移并初始化供应商种子数据。
-
-运维 UI 入口默认为 `http://localhost:18000/ops`，访问时需要输入 `.env` 中的 `OPS_PASSWORD`。
 
 ## 技术栈
 
