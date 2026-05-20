@@ -39,7 +39,10 @@ async def test_submit_notification_returns_accepted(api_client, monkeypatch, cap
     assert data["status"] == "pending"
     assert data["event_id"] == "evt_1"
     assert sent_messages == [data["id"]]
-    assert any(record.message == "notification_enqueued" for record in caplog.records)
+    enqueue_records = [r for r in caplog.records if r.message.startswith("notification_enqueued ")]
+    assert len(enqueue_records) == 1
+    assert f"notification_id={data['id']}" in enqueue_records[0].message
+    assert "trace_id=trace_1" in enqueue_records[0].message
 
 
 async def test_submit_notification_marks_failed_when_enqueue_fails(api_client, db_session, monkeypatch):

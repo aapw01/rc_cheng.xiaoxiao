@@ -33,14 +33,11 @@ async def deliver_notification(session: AsyncSession, notification_id: UUID | st
     session.add(attempt)
     adapter = get_adapter(notification.provider_code)
     trace_id = notification.metadata_.get("trace_id")
-    log_context = {
-        "notification_id": str(notification.id),
-        "provider_code": notification.provider_code,
-        "event_type": notification.event_type,
-        "trace_id": trace_id,
-        "attempt_number": attempt_number,
-    }
-    logger.info("notification_delivery_started", extra=log_context)
+    log_prefix = (
+        f"notification_id={notification.id} provider={notification.provider_code} "
+        f"event={notification.event_type} attempt={attempt_number} trace_id={trace_id}"
+    )
+    logger.info("notification_delivery_started %s", log_prefix)
     try:
         request = adapter.build_request(notification.event_type, notification.payload)
     except ProviderAdapterError as exc:
@@ -51,7 +48,7 @@ async def deliver_notification(session: AsyncSession, notification_id: UUID | st
         notification.status = NotificationStatus.failed
         notification.last_error = str(exc)
         await session.commit()
-        logger.warning("notification_delivery_adapter_error", extra={**log_context, "error": str(exc)})
+        logger.warning("notification_delivery_adapter_error %s error=%s", log_prefix, exc)
         return
     attempt.request_method = request.method
     attempt.request_url = request.url
@@ -71,19 +68,13 @@ async def deliver_notification(session: AsyncSession, notification_id: UUID | st
             notification.status = NotificationStatus.delivered
             notification.last_error = None
             await session.commit()
-            logger.info(
-                "notification_delivery_succeeded",
-                extra={**log_context, "response_status": response.status_code},
-            )
+            logger.info("notification_delivery_succeeded %s response_status=%d", log_prefix, response.status_code)
             return
         attempt.error_type = "http_status"
         attempt.error_message = response.text[:1000]
         mark_failed_or_retrying(notification, attempt_number, f"HTTP {response.status_code}")
         await session.commit()
-        logger.warning(
-            "notification_delivery_http_failed",
-            extra={**log_context, "response_status": response.status_code},
-        )
+        logger.warning("notification_delivery_http_failed %s response_status=%d", log_prefix, response.status_code)
         raise DeliveryFailedError(f"Vendor returned HTTP {response.status_code}")
     except httpx.TimeoutException as exc:
         attempt.error_type = "timeout"
@@ -92,7 +83,7 @@ async def deliver_notification(session: AsyncSession, notification_id: UUID | st
         notification.attempt_count = attempt_number
         mark_failed_or_retrying(notification, attempt_number, "timeout")
         await session.commit()
-        logger.warning("notification_delivery_timeout", extra={**log_context, "error": str(exc)})
+        logger.warning("notification_delivery_timeout %s error=%s", log_prefix, exc)
         raise DeliveryFailedError("Vendor request timed out") from exc
     except httpx.HTTPError as exc:
         attempt.error_type = "network"
@@ -101,7 +92,7 @@ async def deliver_notification(session: AsyncSession, notification_id: UUID | st
         notification.attempt_count = attempt_number
         mark_failed_or_retrying(notification, attempt_number, str(exc))
         await session.commit()
-        logger.warning("notification_delivery_network_failed", extra={**log_context, "error": str(exc)})
+        logger.warning("notification_delivery_network_failed %s error=%s", log_prefix, exc)
         raise DeliveryFailedError("Vendor request failed") from exc
 
 

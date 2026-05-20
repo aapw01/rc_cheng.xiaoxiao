@@ -42,7 +42,10 @@ async def test_deliver_notification_marks_success(db_session, httpx_mock, disabl
     assert notification.attempt_count == 1
     assert len(attempts) == 1
     assert attempts[0].response_status == 200
-    assert any(record.message == "notification_delivery_succeeded" for record in caplog.records)
+    succeeded_records = [r for r in caplog.records if r.message.startswith("notification_delivery_succeeded ")]
+    assert len(succeeded_records) == 1
+    assert f"notification_id={notification_id}" in succeeded_records[0].message
+    assert "response_status=200" in succeeded_records[0].message
 
 
 async def test_deliver_notification_records_failure_and_raises(db_session, httpx_mock, disable_dramatiq_enqueue):

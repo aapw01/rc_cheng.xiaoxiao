@@ -55,23 +55,19 @@ async def submit_notification(session: AsyncSession, payload: NotificationCreate
         notification.last_error = "enqueue_failed"
         await session.commit()
         logger.exception(
-            "notification_enqueue_failed",
-            extra={
-                "notification_id": str(notification.id),
-                "provider_code": notification.provider_code,
-                "event_type": notification.event_type,
-                "trace_id": trace_id,
-            },
+            "notification_enqueue_failed notification_id=%s provider=%s event=%s trace_id=%s",
+            notification.id,
+            notification.provider_code,
+            notification.event_type,
+            trace_id,
         )
         raise AppError(status_code=503, code="enqueue_failed", message="Failed to enqueue notification") from exc
     logger.info(
-        "notification_enqueued",
-        extra={
-            "notification_id": str(notification.id),
-            "provider_code": notification.provider_code,
-            "event_type": notification.event_type,
-            "trace_id": trace_id,
-        },
+        "notification_enqueued notification_id=%s provider=%s event=%s trace_id=%s",
+        notification.id,
+        notification.provider_code,
+        notification.event_type,
+        trace_id,
     )
     return notification
 
