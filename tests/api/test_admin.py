@@ -25,7 +25,8 @@ async def create_notification(db_session, provider_code: str = "crm", event_id: 
             "payload": {"user_id": "u_123", "registered_at": "2026-05-19T10:00:00Z"},
         },
     }[provider_code]
-    return await submit_notification(db_session, NotificationCreate(event_id=event_id, **payload))
+    result = await submit_notification(db_session, NotificationCreate(event_id=event_id, **payload))
+    return result.notification
 
 
 async def test_admin_metrics_aggregates_statuses(api_client, db_session):

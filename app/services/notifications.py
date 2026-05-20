@@ -1,4 +1,5 @@
 import logging
+from dataclasses import dataclass
 from uuid import UUID
 
 from sqlalchemy import select
@@ -15,10 +16,17 @@ from app.tasks.delivery import actor_for_queue
 logger = logging.getLogger(__name__)
 
 
-async def submit_notification(session: AsyncSession, payload: NotificationCreate) -> Notification:
+@dataclass(frozen=True)
+class NotificationSubmitResult:
+    notification: Notification
+    deduplicated: bool
+
+
+async def submit_notification(session: AsyncSession, payload: NotificationCreate) -> NotificationSubmitResult:
     existing = await find_existing_notification(session, payload)
     if existing is not None:
-        return existing
+        ensure_idempotent_payload_matches(existing, payload)
+        return NotificationSubmitResult(notification=existing, deduplicated=True)
 
     provider = await session.scalar(select(Provider).where(Provider.provider_code == payload.provider_code))
     if provider is None:
@@ -44,7 +52,8 @@ async def submit_notification(session: AsyncSession, payload: NotificationCreate
         await session.rollback()
         existing = await find_existing_notification(session, payload)
         if existing is not None:
-            return existing
+            ensure_idempotent_payload_matches(existing, payload)
+            return NotificationSubmitResult(notification=existing, deduplicated=True)
         raise
     await session.refresh(notification)
     trace_id = payload.metadata.get("trace_id")
@@ -69,7 +78,7 @@ async def submit_notification(session: AsyncSession, payload: NotificationCreate
         notification.event_type,
         trace_id,
     )
-    return notification
+    return NotificationSubmitResult(notification=notification, deduplicated=False)
 
 
 async def find_existing_notification(session: AsyncSession, payload: NotificationCreate) -> Notification | None:
@@ -95,3 +104,22 @@ def validate_adapter(payload: NotificationCreate) -> None:
         adapter.build_request(payload.event_type, payload.payload)
     except ProviderAdapterError as exc:
         raise AppError(status_code=400, code="invalid_event", message=str(exc)) from exc
+
+
+def ensure_idempotent_payload_matches(existing: Notification, payload: NotificationCreate) -> None:
+    if existing.payload == payload.payload and existing.metadata_ == payload.metadata:
+        return
+    raise AppError(
+        status_code=409,
+        code="idempotency_conflict",
+        message=(
+            "A notification with the same provider_code, event_type and event_id already exists with different "
+            "payload or metadata"
+        ),
+        data={
+            "existing_notification_id": str(existing.id),
+            "provider_code": existing.provider_code,
+            "event_type": existing.event_type,
+            "event_id": existing.event_id,
+        },
+    )

@@ -34,10 +34,12 @@ async def test_submit_notification_returns_accepted(api_client, monkeypatch, cap
         )
 
     assert response.status_code == 202
+    assert response.json()["message"] == "accepted"
     data = response.json()["data"]
     assert data["provider_code"] == "crm"
     assert data["status"] == "pending"
     assert data["event_id"] == "evt_1"
+    assert data["idempotency"] == {"deduplicated": False, "conflict": False}
     assert sent_messages == [data["id"]]
     enqueue_records = [r for r in caplog.records if r.message.startswith("notification_enqueued ")]
     assert len(enqueue_records) == 1
@@ -96,8 +98,74 @@ async def test_duplicate_submission_returns_existing_notification(api_client):
     second = await api_client.post("/api/notifications", json=payload)
 
     assert first.status_code == 202
-    assert second.status_code == 202
+    assert second.status_code == 200
+    assert second.json()["message"] == "duplicate_accepted"
     assert second.json()["data"]["id"] == first.json()["data"]["id"]
+    assert second.json()["data"]["idempotency"] == {"deduplicated": True, "conflict": False}
+
+
+async def test_duplicate_submission_with_different_payload_is_conflict(api_client):
+    payload = {
+        "provider_code": "crm",
+        "event_type": "subscription_paid",
+        "event_id": "evt_idempotency_conflict",
+        "payload": {
+            "user_id": "u_123",
+            "email": "alice@example.com",
+            "subscription_id": "sub_1",
+            "amount": 19900,
+            "currency": "USD",
+            "paid_at": "2026-05-19T10:00:00Z",
+        },
+        "metadata": {"trace_id": "trace_1"},
+    }
+    changed_payload = {
+        **payload,
+        "payload": {
+            **payload["payload"],
+            "amount": 29900,
+        },
+    }
+
+    first = await api_client.post("/api/notifications", json=payload)
+    second = await api_client.post("/api/notifications", json=changed_payload)
+
+    assert first.status_code == 202
+    assert second.status_code == 409
+    body = second.json()
+    assert body["code"] == "idempotency_conflict"
+    assert body["data"]["existing_notification_id"] == first.json()["data"]["id"]
+    assert body["data"]["provider_code"] == "crm"
+    assert body["data"]["event_type"] == "subscription_paid"
+    assert body["data"]["event_id"] == "evt_idempotency_conflict"
+
+
+async def test_duplicate_submission_with_different_metadata_is_conflict(api_client):
+    payload = {
+        "provider_code": "crm",
+        "event_type": "subscription_paid",
+        "event_id": "evt_metadata_conflict",
+        "payload": {
+            "user_id": "u_123",
+            "email": "alice@example.com",
+            "subscription_id": "sub_1",
+            "amount": 19900,
+            "currency": "USD",
+            "paid_at": "2026-05-19T10:00:00Z",
+        },
+        "metadata": {"trace_id": "trace_1"},
+    }
+    changed_metadata = {
+        **payload,
+        "metadata": {"trace_id": "trace_2"},
+    }
+
+    first = await api_client.post("/api/notifications", json=payload)
+    second = await api_client.post("/api/notifications", json=changed_metadata)
+
+    assert first.status_code == 202
+    assert second.status_code == 409
+    assert second.json()["code"] == "idempotency_conflict"
 
 
 async def test_unknown_provider_is_rejected(api_client):

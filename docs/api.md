@@ -11,12 +11,12 @@ X-API-Key: dev-api-key
 Content-Type: application/json
 ```
 
-响应格式：
+成功响应格式：
 
 ```json
 {
   "code": 0,
-  "message": "ok",
+  "message": "accepted",
   "data": {}
 }
 ```
@@ -72,12 +72,12 @@ Content-Type: application/json
 }
 ```
 
-成功返回 `202 Accepted`：
+首次提交成功返回 `202 Accepted`。`message=accepted` 表示平台已创建 notification 并完成入队，后续由 worker 异步投递：
 
 ```json
 {
   "code": 0,
-  "message": "ok",
+  "message": "accepted",
   "data": {
     "id": "3b7091af-d3aa-451a-81c0-b75185837cbc",
     "provider_code": "crm",
@@ -88,6 +88,10 @@ Content-Type: application/json
     "last_error": null,
     "payload": {},
     "metadata": {},
+    "idempotency": {
+      "deduplicated": false,
+      "conflict": false
+    },
     "created_at": "2026-05-19T10:00:00Z",
     "updated_at": "2026-05-19T10:00:00Z"
   }
@@ -97,9 +101,52 @@ Content-Type: application/json
 幂等规则：
 
 - 平台以 `provider_code + event_type + event_id` 作为唯一业务事件；
-- 重复提交同一事件会返回已有 notification，仍返回 `202`，不会创建新任务；
+- 首次提交成功返回 `202 Accepted`，`idempotency.deduplicated=false`；
+- 完全重复提交同一事件会返回已有 notification，HTTP 状态为 `200 OK`，`message=duplicate_accepted`，`idempotency.deduplicated=true`，不会创建新任务，也不会再次投递；
+- 如果 `provider_code + event_type + event_id` 相同，但 `payload` 或 `metadata` 与已存在记录不同，返回 `409 idempotency_conflict`，避免业务方误以为新内容已被处理；
 - 重复提交优先于 provider 状态检查，因此 provider 已暂停时，重复提交已有事件仍会返回已有 notification；
-- **如果旧任务已经处于 `failed` 终态，重复提交不会重新入队**——调用方拿到 `202 + status=failed` 后，需要触发重试只有两种途径：调用 `POST /api/admin/notifications/{id}/retry` 运维 API，或者用新的 `event_id` 提交一条全新的通知任务。
+- **如果旧任务已经处于 `failed` 终态，完全重复提交不会重新入队**——调用方拿到 `200 + status=failed + idempotency.deduplicated=true` 后，需要触发重试只有两种途径：调用 `POST /api/admin/notifications/{id}/retry` 运维 API，或者用新的 `event_id` 提交一条全新的通知任务。
+
+完全重复提交返回示例：
+
+```json
+{
+  "code": 0,
+  "message": "duplicate_accepted",
+  "data": {
+    "id": "3b7091af-d3aa-451a-81c0-b75185837cbc",
+    "provider_code": "crm",
+    "event_type": "subscription_paid",
+    "event_id": "sub_paid_202605190001",
+    "status": "delivered",
+    "attempt_count": 1,
+    "last_error": null,
+    "payload": {},
+    "metadata": {},
+    "idempotency": {
+      "deduplicated": true,
+      "conflict": false
+    },
+    "created_at": "2026-05-19T10:00:00Z",
+    "updated_at": "2026-05-19T10:00:05Z"
+  }
+}
+```
+
+幂等冲突返回示例：
+
+```json
+{
+  "code": "idempotency_conflict",
+  "message": "A notification with the same provider_code, event_type and event_id already exists with different payload or metadata",
+  "data": {
+    "existing_notification_id": "3b7091af-d3aa-451a-81c0-b75185837cbc",
+    "provider_code": "crm",
+    "event_type": "subscription_paid",
+    "event_id": "sub_paid_202605190001"
+  }
+}
+```
 
 请求限制：
 
@@ -237,6 +284,7 @@ Query 参数：
 | 404 | `notification_not_found` | notification 不存在 |
 | 409 | `provider_disabled` | provider 未启用 |
 | 409 | `provider_paused` | provider 暂停接收新任务 |
+| 409 | `idempotency_conflict` | 相同 `provider_code + event_type + event_id` 已存在，但 `payload` 或 `metadata` 不一致 |
 | 409 | `notification_not_failed` | 只有 failed 任务可以人工重试 |
 | 413 | `payload_too_large` | 请求体超过 `MAX_PAYLOAD_BYTES` |
 | 422 | `validation_error` | 请求参数或请求体格式不合法 |

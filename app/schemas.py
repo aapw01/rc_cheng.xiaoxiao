@@ -40,6 +40,15 @@ class NotificationResponse(BaseModel):
     updated_at: datetime
 
 
+class IdempotencyResponse(BaseModel):
+    deduplicated: bool
+    conflict: bool = False
+
+
+class NotificationSubmitResponse(NotificationResponse):
+    idempotency: IdempotencyResponse
+
+
 class ApiResponse(BaseModel):
     code: int | str = 0
     message: str = "ok"

@@ -10,7 +10,7 @@ from app.services.notifications import submit_notification
 
 
 async def create_crm_notification(db_session, event_id: str = "evt_delivery") -> UUID:
-    notification = await submit_notification(
+    result = await submit_notification(
         db_session,
         NotificationCreate(
             provider_code="crm",
@@ -26,7 +26,7 @@ async def create_crm_notification(db_session, event_id: str = "evt_delivery") ->
             },
         ),
     )
-    return notification.id
+    return result.notification.id
 
 
 async def test_deliver_notification_marks_success(db_session, httpx_mock, disable_dramatiq_enqueue, caplog):

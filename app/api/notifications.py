@@ -1,11 +1,17 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_session
-from app.schemas import ApiResponse, NotificationCreate, NotificationResponse
+from app.schemas import (
+    ApiResponse,
+    IdempotencyResponse,
+    NotificationCreate,
+    NotificationResponse,
+    NotificationSubmitResponse,
+)
 from app.security import require_api_key
 from app.services.notifications import get_notification, submit_notification
 
@@ -28,13 +34,29 @@ def serialize_notification(notification) -> NotificationResponse:
     )
 
 
+def serialize_submit_notification(notification, deduplicated: bool) -> NotificationSubmitResponse:
+    return NotificationSubmitResponse(
+        **serialize_notification(notification).model_dump(),
+        idempotency=IdempotencyResponse(deduplicated=deduplicated, conflict=False),
+    )
+
+
 @router.post("", status_code=status.HTTP_202_ACCEPTED, response_model=ApiResponse)
 async def create_notification(
     payload: NotificationCreate,
     session: Annotated[AsyncSession, Depends(get_session)],
+    response: Response,
 ) -> ApiResponse:
-    notification = await submit_notification(session, payload)
-    return ApiResponse(data=serialize_notification(notification).model_dump(mode="json"))
+    result = await submit_notification(session, payload)
+    if result.deduplicated:
+        response.status_code = status.HTTP_200_OK
+        message = "duplicate_accepted"
+    else:
+        message = "accepted"
+    return ApiResponse(
+        message=message,
+        data=serialize_submit_notification(result.notification, result.deduplicated).model_dump(mode="json"),
+    )
 
 
 @router.get("/{notification_id}", response_model=ApiResponse)
