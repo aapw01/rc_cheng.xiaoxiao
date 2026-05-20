@@ -6,11 +6,10 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.api.notifications import serialize_notification
 from app.db import get_session
 from app.errors import AppError
 from app.models import DeliveryAttempt, Notification, NotificationStatus, OperatorAction, Provider
-from app.schemas import ApiResponse
+from app.schemas import ApiResponse, serialize_notification
 from app.security import require_api_key
 from app.services.metrics import dashboard_metrics
 from app.tasks.delivery import actor_for_queue

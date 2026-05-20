@@ -15,7 +15,9 @@ Compose 会先启动一次性 `db-setup` 服务，自动执行 `alembic upgrade 
 http://localhost:18000/ops
 ```
 
-`/ops` 入口有独立的运维密码保护，默认读取环境变量 `OPS_PASSWORD`。本地开发可以沿用 `.env.example` 中的默认值，真实环境应改成仅运维人员可知的强密码。
+`/ops` 入口有独立的运维密码保护，默认读取环境变量 `OPS_PASSWORD`。本地开发可以沿用 `.env.example` 中的默认值，真实环境应改成仅运维人员可知的强密码。生产环境（`APP_ENV=production`）启动时会校验该值不能为默认 sentinel，否则进程拒绝启动。
+
+登录成功后会下发一个 `httponly` + `samesite=lax` 的 `ops_session` cookie，有效期 8 小时（达到 `max_age` 后浏览器会自动清除）。Cookie 值是 `HMAC(ops_password, "ops-session")`，因此**修改 `OPS_PASSWORD` 等同于使所有已登录会话立即失效**。生产环境会自动追加 `secure` 标志。
 
 ## 统一 Compose 文件
 

@@ -25,12 +25,19 @@ export type Provider = {
   queue_name: string;
 };
 
+export type NotificationStatus =
+  | "pending"
+  | "delivering"
+  | "delivered"
+  | "retrying"
+  | "failed";
+
 export type NotificationItem = {
   id: string;
   provider_code: string;
   event_type: string;
   event_id: string;
-  status: string;
+  status: NotificationStatus;
   attempt_count: number;
   last_error: string | null;
   payload: Record<string, unknown>;
@@ -81,7 +88,12 @@ export type NotificationList = {
   offset: number;
 };
 
-export function getNotifications(params: { provider_code?: string; status?: string; limit?: number; offset?: number }) {
+export function getNotifications(params: {
+  provider_code?: string;
+  status?: NotificationStatus | string;
+  limit?: number;
+  offset?: number;
+}) {
   const search = new URLSearchParams();
   if (params.provider_code) search.set("provider_code", params.provider_code);
   if (params.status) search.set("status", params.status);

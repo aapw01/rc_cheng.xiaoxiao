@@ -4,6 +4,31 @@ Worker queues are loaded from the `providers` table at startup so that the
 queue set is driven by data rather than hardcoded module constants. Newly
 added providers require a worker restart to pick up the new queue (see SPEC
 §8 for the explicit "no runtime queue mutation" constraint).
+
+Process model
+-------------
+There are three kinds of importer for this module:
+
+1. **API / uvicorn**: imports lazily and calls `actor_for_queue(queue_name)`
+   on each enqueue. The first call for an unseen queue registers a Dramatiq
+   actor with that `queue_name`; subsequent calls return the cached actor.
+   The API process never needs to know the full enabled-queue list up-front.
+
+2. **Dramatiq worker** (`scripts/run_worker.py`): explicitly calls
+   `bootstrap_actors_from_db()` to register one actor per enabled provider
+   queue, then sets the `DRAMATIQ_BOOTSTRAP_PROVIDER_ACTORS=1` environment
+   variable and hands control to the Dramatiq CLI. The CLI re-imports this
+   module in its own startup; the gated call at the bottom of this file
+   ensures the second import re-runs the bootstrap so the actor registry
+   inside the CLI process matches what `--queues` expects to listen on.
+
+3. **Tests**: never set `DRAMATIQ_BOOTSTRAP_PROVIDER_ACTORS`, so the
+   module-level bootstrap is skipped. Tests monkeypatch `actor_for_queue`
+   to a no-op sender so no Redis traffic happens during unit/API tests.
+
+Do not remove the gated `bootstrap_actors_from_db()` call at the bottom:
+without it, the Dramatiq worker CLI starts but has no actors registered,
+and silently consumes 0 messages.
 """
 
 import asyncio

@@ -97,10 +97,23 @@ def test_production_rejects_default_api_key(monkeypatch):
 def test_production_rejects_default_provider_credentials(monkeypatch):
     monkeypatch.setenv("APP_ENV", "production")
     monkeypatch.setenv("API_KEY", "prod-rotated-key")
+    monkeypatch.setenv("OPS_PASSWORD", "prod-rotated-ops")
     monkeypatch.setenv("PROVIDER_CRM_API_KEY", "dev-crm-key")
     get_settings.cache_clear()
 
     with pytest.raises(RuntimeError, match="PROVIDER_CRM_API_KEY"), TestClient(app):
+        pass
+
+    get_settings.cache_clear()
+
+
+def test_production_rejects_default_ops_password(monkeypatch):
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("API_KEY", "prod-rotated-key")
+    monkeypatch.setenv("OPS_PASSWORD", "dev-ops-password")
+    get_settings.cache_clear()
+
+    with pytest.raises(RuntimeError, match="OPS_PASSWORD"), TestClient(app):
         pass
 
     get_settings.cache_clear()

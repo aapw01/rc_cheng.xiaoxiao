@@ -54,6 +54,11 @@ jobs:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/notifications
         run: uv run alembic upgrade head
 
+      - name: Verify migrations match SQLAlchemy models
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/notifications
+        run: uv run alembic check
+
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:

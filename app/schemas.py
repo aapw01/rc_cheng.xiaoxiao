@@ -4,7 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
 
-from app.models import NotificationStatus
+from app.models import Notification, NotificationStatus
 
 
 class NotificationCreate(BaseModel):
@@ -42,7 +42,6 @@ class NotificationResponse(BaseModel):
 
 class IdempotencyResponse(BaseModel):
     deduplicated: bool
-    conflict: bool = False
 
 
 class NotificationSubmitResponse(NotificationResponse):
@@ -53,3 +52,30 @@ class ApiResponse(BaseModel):
     code: int | str = 0
     message: str = "ok"
     data: Any
+
+
+def serialize_notification(notification: Notification) -> NotificationResponse:
+    """Build the public-facing notification payload shared by user and admin APIs."""
+    return NotificationResponse(
+        id=notification.id,
+        provider_code=notification.provider_code,
+        event_type=notification.event_type,
+        event_id=notification.event_id,
+        status=notification.status,
+        attempt_count=notification.attempt_count,
+        last_error=notification.last_error,
+        payload=notification.payload,
+        metadata=notification.metadata_,
+        created_at=notification.created_at,
+        updated_at=notification.updated_at,
+    )
+
+
+def serialize_submit_notification(
+    notification: Notification, *, deduplicated: bool
+) -> NotificationSubmitResponse:
+    """Wrap `serialize_notification` with the per-submission idempotency block."""
+    return NotificationSubmitResponse(
+        **serialize_notification(notification).model_dump(),
+        idempotency=IdempotencyResponse(deduplicated=deduplicated),
+    )

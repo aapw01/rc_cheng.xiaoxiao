@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -24,6 +24,20 @@ class Settings(BaseSettings):
     provider_inventory_base_url: str = "https://inventory.vendor.test"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    @field_validator("cors_allowed_origins")
+    @classmethod
+    def _reject_wildcard_cors(cls, value: str) -> str:
+        # Starlette's CORSMiddleware silently drops credentials when origin is "*",
+        # which would break the ops UI session cookie. Fail fast instead of producing
+        # a misconfigured deployment.
+        origins = [item.strip() for item in value.split(",") if item.strip()]
+        if "*" in origins:
+            raise ValueError(
+                "CORS_ALLOWED_ORIGINS cannot contain '*' because allow_credentials=True "
+                "requires explicit origins. List each frontend origin explicitly."
+            )
+        return value
 
     def effective_cors_allowed_origins(self) -> list[str]:
         configured = [origin.strip() for origin in self.cors_allowed_origins.split(",") if origin.strip()]

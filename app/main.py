@@ -14,15 +14,18 @@ from fastapi.staticfiles import StaticFiles
 from app.api.admin import router as admin_router
 from app.api.notifications import router as notifications_router
 from app.config import get_settings
+from app.db import dispose_engine
 from app.errors import error_response, install_error_handlers
 
 WEB_DIST_DIR = Path(__file__).resolve().parent.parent / "web" / "dist"
 WEB_INDEX_FILE = WEB_DIST_DIR / "index.html"
 OPS_SESSION_COOKIE = "ops_session"
+OPS_SESSION_MAX_AGE_SECONDS = 8 * 60 * 60
 
 
 PRODUCTION_SENTINEL_VALUES = {
     "API_KEY": "dev-api-key",
+    "OPS_PASSWORD": "dev-ops-password",
     "PROVIDER_CRM_API_KEY": "dev-crm-key",
     "PROVIDER_ADS_BEARER_TOKEN": "dev-ads-token",
     "PROVIDER_INVENTORY_API_KEY": "dev-inventory-key",
@@ -36,7 +39,10 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         for env_name, sentinel in PRODUCTION_SENTINEL_VALUES.items():
             if getattr(settings, env_name.lower()) == sentinel:
                 raise RuntimeError(f"{env_name} must be configured in production")
-    yield
+    try:
+        yield
+    finally:
+        await dispose_engine()
 
 
 app = FastAPI(title="API Notification Delivery Platform", lifespan=lifespan)
@@ -98,6 +104,7 @@ async def ops_login(request: Request) -> Response:
     response.set_cookie(
         OPS_SESSION_COOKIE,
         ops_session_token(),
+        max_age=OPS_SESSION_MAX_AGE_SECONDS,
         httponly=True,
         samesite="lax",
         secure=get_settings().app_env == "production",

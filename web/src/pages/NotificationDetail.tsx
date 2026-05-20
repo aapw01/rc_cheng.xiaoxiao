@@ -1,5 +1,5 @@
 import { RefreshCw } from "lucide-react";
-import { Button, Card, Descriptions, Space, Table, Typography, message } from "antd";
+import { App, Button, Card, Descriptions, Space, Table, Typography } from "antd";
 import { useEffect, useState } from "react";
 import { Attempt, getNotification, NotificationItem, retryNotification } from "../api";
 
@@ -12,6 +12,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export default function NotificationDetail({ id, onBack }: { id: string; onBack: () => void }) {
+  const { message } = App.useApp();
   const [item, setItem] = useState<(NotificationItem & { attempts: Attempt[] }) | null>(null);
   const [loading, setLoading] = useState(false);
 

@@ -39,7 +39,7 @@ async def test_submit_notification_returns_accepted(api_client, monkeypatch, cap
     assert data["provider_code"] == "crm"
     assert data["status"] == "pending"
     assert data["event_id"] == "evt_1"
-    assert data["idempotency"] == {"deduplicated": False, "conflict": False}
+    assert data["idempotency"] == {"deduplicated": False}
     assert sent_messages == [data["id"]]
     enqueue_records = [r for r in caplog.records if r.message.startswith("notification_enqueued ")]
     assert len(enqueue_records) == 1
@@ -101,7 +101,7 @@ async def test_duplicate_submission_returns_existing_notification(api_client):
     assert second.status_code == 200
     assert second.json()["message"] == "duplicate_accepted"
     assert second.json()["data"]["id"] == first.json()["data"]["id"]
-    assert second.json()["data"]["idempotency"] == {"deduplicated": True, "conflict": False}
+    assert second.json()["data"]["idempotency"] == {"deduplicated": True}
 
 
 async def test_duplicate_submission_with_different_payload_is_conflict(api_client):

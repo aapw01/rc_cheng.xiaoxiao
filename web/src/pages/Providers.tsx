@@ -1,9 +1,10 @@
 import { RefreshCw } from "lucide-react";
-import { Button, Card, Space, Table, Tag, Typography, message } from "antd";
+import { App, Button, Card, Space, Table, Tag, Typography } from "antd";
 import { useEffect, useState } from "react";
 import { getProviders, pauseProvider, Provider, resumeProvider } from "../api";
 
 export default function Providers() {
+  const { message } = App.useApp();
   const [providers, setProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(false);
 
