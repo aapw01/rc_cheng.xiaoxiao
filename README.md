@@ -2,11 +2,22 @@
 
 企业内部 API 通知投递平台：业务系统提交业务事件，平台异步转换并投递到外部供应商 HTTP API，记录投递尝试、失败重试，并提供运维页面查看和操作。
 
+作业要求中的 AI 使用说明见 [AI_USAGE.md](AI_USAGE.md)，其中记录了 AI 提供的帮助、未采纳建议，以及关键工程决策与取舍。
+
 ## 快速开始
 
 ```bash
 cp .env.example .env
 PROVIDER_CRM_BASE_URL=http://mock-vendor:9000 docker compose --profile mock up --build
+```
+
+使用 GitHub Actions 已打包镜像启动时，也需要把 CRM 地址指向 mock vendor：
+
+```bash
+cp .env.example .env
+IMAGE=ghcr.io/aapw01/rc_cheng.xiaoxiao:master \
+PROVIDER_CRM_BASE_URL=http://mock-vendor:9000 \
+docker compose --profile mock up --no-build
 ```
 
 Docker 启动会自动执行 Alembic 迁移并初始化供应商种子数据。默认入口：
@@ -139,6 +150,7 @@ npm --prefix web run dev
 | 本地构建并启动 | `docker compose up --build` |
 | 使用上游镜像启动 | `IMAGE=ghcr.io/aapw01/rc_cheng.xiaoxiao:master docker compose up -d --no-build` |
 | 启动 mock vendor 做端到端测试 | `PROVIDER_CRM_BASE_URL=http://mock-vendor:9000 docker compose --profile mock up --build` |
+| 使用上游镜像并启动 mock vendor | `IMAGE=ghcr.io/aapw01/rc_cheng.xiaoxiao:master PROVIDER_CRM_BASE_URL=http://mock-vendor:9000 docker compose --profile mock up --no-build` |
 
 ## 镜像打包
 
