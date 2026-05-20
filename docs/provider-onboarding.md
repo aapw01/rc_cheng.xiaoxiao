@@ -137,7 +137,7 @@ PROVIDER_SEEDS = [
 ]
 ```
 
-如果是新增供应商，运行 seed 脚本后还需要新增对应 actor 或映射到已有队列池，并重启 worker，让 worker 能监听到新的 queue（详见设计文档第 8 节）。
+新增供应商后，运行 seed 脚本插入 `providers` 记录（`enabled=true`、独立的 `queue_name`），然后**重启 worker**。`scripts/run_worker.py` 启动时会从 DB 重新读取 enabled queue 列表并自动注册对应 actor，**不需要**在代码里手动加 actor 定义。第一版不支持运行时动态新增队列（设计文档第 8 节）。
 
 ## 8. 供应商认证凭证
 
