@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     default_max_attempts: int = Field(default=6, ge=-1)
     http_request_timeout_seconds: float = Field(default=10.0, gt=0)
+    actor_time_limit_seconds: float = Field(default=30.0, gt=0)
     max_payload_bytes: int = Field(default=65_536, gt=0)
 
     provider_crm_api_key: str = "dev-crm-key"

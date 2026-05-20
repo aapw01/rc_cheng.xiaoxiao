@@ -40,7 +40,7 @@ services:
       - postgres
       - redis
       - mock-vendor
-    command: uv run dramatiq app.tasks.delivery --queues notifications_crm notifications_ads notifications_inventory
+    command: uv run python scripts/run_worker.py
 
 volumes:
   postgres_data:

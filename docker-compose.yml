@@ -47,7 +47,7 @@ services:
     depends_on:
       - postgres
       - redis
-    command: uv run dramatiq app.tasks.delivery --queues notifications_crm notifications_ads notifications_inventory
+    command: uv run python scripts/run_worker.py
 
   mock-vendor:
     image: notification-platform:local

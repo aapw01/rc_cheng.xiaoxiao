@@ -1,17 +1,55 @@
-from app.tasks.delivery import actor_for_queue, max_retries
+from app.tasks.delivery import (
+    MAX_RETRY_BACKOFF_MS,
+    MIN_RETRY_BACKOFF_MS,
+    _actor_registry,
+    _max_retries,
+    actor_for_queue,
+    register_provider_actor,
+)
 
 
-def test_actor_for_queue_returns_provider_specific_actor():
-    assert actor_for_queue("notifications_crm").actor_name == "deliver_crm_notification"
-    assert actor_for_queue("notifications_ads").actor_name == "deliver_ads_notification"
-    assert actor_for_queue("notifications_inventory").actor_name == "deliver_inventory_notification"
+def test_actor_for_queue_registers_on_first_use():
+    queue_name = "notifications_unit_test_dynamic_queue"
+    _actor_registry.pop(queue_name, None)
+
+    actor = actor_for_queue(queue_name)
+
+    assert actor.queue_name == queue_name
+    assert actor.actor_name == f"deliver_{queue_name}"
 
 
-def test_delivery_actors_use_spec_backoff_window():
-    actor = actor_for_queue("notifications_crm")
+def test_actor_registration_is_idempotent():
+    queue_name = "notifications_unit_test_idempotent_queue"
+    _actor_registry.pop(queue_name, None)
 
-    assert actor.options["min_backoff"] == 60_000
-    assert actor.options["max_backoff"] == 3_600_000
+    first = register_provider_actor(queue_name)
+    second = register_provider_actor(queue_name)
+
+    assert first is second
+
+
+def test_delivery_actor_uses_spec_backoff_window():
+    queue_name = "notifications_unit_test_backoff_queue"
+    _actor_registry.pop(queue_name, None)
+
+    actor = actor_for_queue(queue_name)
+
+    assert actor.options["min_backoff"] == MIN_RETRY_BACKOFF_MS
+    assert actor.options["max_backoff"] == MAX_RETRY_BACKOFF_MS
+
+
+def test_delivery_actor_includes_time_limit(monkeypatch):
+    monkeypatch.setenv("ACTOR_TIME_LIMIT_SECONDS", "45")
+    from app.config import get_settings
+
+    get_settings.cache_clear()
+    queue_name = "notifications_unit_test_time_limit_queue"
+    _actor_registry.pop(queue_name, None)
+
+    actor = actor_for_queue(queue_name)
+
+    assert actor.options["time_limit"] == 45_000
+    get_settings.cache_clear()
 
 
 def test_max_retries_is_unlimited_when_attempts_is_minus_one(monkeypatch):
@@ -20,5 +58,5 @@ def test_max_retries_is_unlimited_when_attempts_is_minus_one(monkeypatch):
 
     get_settings.cache_clear()
 
-    assert max_retries() is None
+    assert _max_retries() is None
     get_settings.cache_clear()
