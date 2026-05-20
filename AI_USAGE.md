@@ -38,8 +38,9 @@
 3. 异步投递：如何让业务请求和外部 HTTP 调用解耦；
 4. 可靠性：失败、超时、重试、重复提交怎么处理，下游通知供应商一直故障如何解决。
 5. 持久化：任务状态和投递尝试如何记录；
-6. 运维能力：如何查看堆积、失败、重试、暂停供应商；
+6. 运维能力：如何查看堆积、失败、重试、暂停供应商；以及出现问题如何快速定文，人工介入处理
 7. 交付验证：如何让别人可以本地启动、测试、看结果。
+8. 自动扩缩容：服务根据任务数量自动扩缩容。
 
 ## 3. 整体架构与核心设计
 
@@ -95,13 +96,13 @@ AI 帮我从 PDF 中提炼出评估重点：系统边界、复杂度管理、对
 - FastAPI + PostgreSQL + Redis + RQ；
 - FastAPI + PostgreSQL + Redis + Dramatiq；
 
-这些比较帮助我明确：这个作业需要体现真实异步投递和失败处理，但不需要上来就用最重的基础设施。最终我选择了 PostgreSQL + Redis + Dramatiq。
+这个作业需要体现真实异步投递和失败处理，但不需要上来就用最重的基础设施。最终我选择了 PostgreSQL + Redis + Dramatiq 这个卡到好处的选择 
 
 这里也体现了一次重要的判断修正：AI 最开始更偏向推荐轻量 MVP，例如 FastAPI 加 SQLite 或简单后台任务。这个方向实现快，但我认为它不够符合这次作业强调的“真实工程经验”。真实的通知投递系统通常需要持久化任务状态、独立 worker、消息队列、失败重试和运维可见性。因此我把技术选型调整为 FastAPI + PostgreSQL + Redis + Dramatiq，并补上 Docker Compose、pytest 和 React 运维页面，让项目做到一个基本可以使用的内部服务。
 
 第三，帮助暴露可靠性问题。
 
-AI 在讨论中不断提醒一些边界问题：
+AI 在讨论中会提醒我一些边界问题：
 
 - 下游供应商可能非幂等；
 - 请求发出但响应失败时，平台无法知道外部副作用是否发生，这种情况第一版不做过多设计，无成功返回的通知调用即认为失败，由后续重试机制处理；
@@ -203,7 +204,7 @@ notifications_inventory
 
 Dramatiq 负责消息级重试，但业务状态不能只依赖队列系统。
 
-我选择把 notification 状态和每次 delivery attempt 都写入 PostgreSQL。这样运维页面能看到每次尝试的时间、URL、响应状态、错误类型和错误信息，也方便审计和排查。不过后续数据量大的时候需要使用缓存机制，避免因数据库带来吞吐量瓶颈。
+我选择把 notification 状态和每次 delivery attempt 都写入 PostgreSQL。这样运维页面能看到每次尝试的时间、URL、响应状态、错误类型和错误信息，也方便审计和排查。不过后续数据量大的时候需要使用缓存机制或者直接用redis 来做，避免因数据库带来吞吐量瓶颈。
 
 ### 6.7 我提出做轻量运维页面，ai 帮我实现
 
@@ -229,19 +230,19 @@ Dramatiq 负责消息级重试，但业务状态不能只依赖队列系统。
 
 ### 6.9 Docker Compose 自动迁移数据库
 
-我选择让 Compose 启动时通过一次性 `db-setup` 服务自动执行 Alembic migration 和供应商 seed。
+最开始ai 写的技术实现是把启动、迁移分开两步手动来做的，我选择让 Compose 启动时通过一次性 `db-setup` 服务自动执行 Alembic migration 和供应商数据初始化
 
 原因很简单：开发者本地启动时，不应该再记一串手动迁移命令。`docker compose up --build` 应该尽可能接近可用状态。
 
 ### 6.10 ai 最开始直接做了两个 docker-compose 文件
 
-AI 最开始直接做了两个 docker-compose 文件，一个是开发环境，一个是生产环境，我主动拒绝了，这里会大大增加使用者成本，应该只有一个 docker-compose 文件，开发环境用 `docker compose up --build`，生产环境用 `docker compose up -d --no-build`（直接使用上游 GitHub 打包的镜像）即可。
+AI 最开始直接做了两个 docker-compose 文件，一个是开发环境，一个是生产环境，我主动提出修改，精简逻辑，这里会大大增加使用者成本，应该只有一个 docker-compose 文件，开发环境用 `docker compose up --build`，生产环境用 `docker compose up -d --no-build`（直接使用上游 GitHub 打包的镜像）即可。
 
 ### 6.11 容器运行时不用 `uv run`
 
 构建镜像时已经执行 `uv sync --frozen --no-dev`。如果容器启动时继续使用 `uv run`，它可能重新同步依赖，导致启动阶段下载 dev 包。
 
-我把运行命令改成直接使用 `.venv/bin/python`、`.venv/bin/uvicorn` 和 `.venv/bin/alembic`，让容器启动更快、更可预测。
+我把运行命令改成直接使用 `.venv/bin/python`、`.venv/bin/uvicorn` 和 `.venv/bin/alembic`，让容器启动更快、减少不必要的下载操作
 
 ### 6.12 用 CI 和统一镜像证明可交付
 
