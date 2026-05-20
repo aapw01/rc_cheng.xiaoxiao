@@ -27,12 +27,10 @@ npm --prefix web run build
 ```bash
 docker build -t notification-platform:local .
 docker compose -f docker-compose.e2e.yml -p rc-notify-e2e up -d
-docker compose -f docker-compose.e2e.yml -p rc-notify-e2e exec -T api uv run alembic upgrade head
-docker compose -f docker-compose.e2e.yml -p rc-notify-e2e exec -T api uv run python -m scripts.seed_providers
 curl -fsS http://127.0.0.1:18000/health
 ```
 
-提交一条 CRM 通知后，预期任务最终变为 `delivered`，`delivery_attempts.response_status=200`，mock vendor 日志能看到收到的 HTTP 请求。验收结束后清理：
+启动时 `db-setup` 会自动执行数据库迁移和供应商种子数据。提交一条 CRM 通知后，预期任务最终变为 `delivered`，`delivery_attempts.response_status=200`，mock vendor 日志能看到收到的 HTTP 请求。验收结束后清理：
 
 mock vendor 默认返回 `200`。需要验证失败链路时，可以把供应商 URL 指到 `/fail-500` 路径，或在请求里带 `X-Mock-Status: 503`，mock vendor 会按指定状态码响应。
 

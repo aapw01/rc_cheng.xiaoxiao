@@ -15,6 +15,24 @@ services:
     ports:
       - "6379:6379"
 
+  db-setup:
+    image: notification-platform:local
+    build: .
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/notifications
+      REDIS_URL: redis://redis:6379/0
+      API_KEY: dev-api-key
+    depends_on:
+      - postgres
+      - redis
+    restart: "no"
+    command: >
+      sh -c "uv run alembic upgrade head &&
+      uv run python -m scripts.seed_providers"
+
   api:
     image: notification-platform:local
     build: .
@@ -27,8 +45,8 @@ services:
       API_KEY: dev-api-key
       PROVIDER_CRM_BASE_URL: http://mock-vendor:9000
     depends_on:
-      - postgres
-      - redis
+      db-setup:
+        condition: service_completed_successfully
     ports:
       - "8000:8000"
     command: uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
@@ -45,9 +63,9 @@ services:
       API_KEY: dev-api-key
       PROVIDER_CRM_BASE_URL: http://mock-vendor:9000
     depends_on:
-      - postgres
-      - redis
-    command: uv run python scripts/run_worker.py
+      db-setup:
+        condition: service_completed_successfully
+    command: uv run python -m scripts.run_worker
 
   mock-vendor:
     image: notification-platform:local

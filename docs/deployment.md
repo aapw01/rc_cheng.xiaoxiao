@@ -7,12 +7,7 @@ cp .env.example .env
 docker compose up --build
 ```
 
-首次启动后执行数据库迁移和供应商种子数据：
-
-```bash
-uv run alembic upgrade head
-uv run python -m scripts.seed_providers
-```
+Compose 会先启动一次性 `db-setup` 服务，自动执行 `alembic upgrade head` 并初始化供应商种子数据；`api` 和 `worker` 会等它成功完成后再启动。
 
 生产镜像里已经包含 React 运维 UI，访问：
 
@@ -29,7 +24,7 @@ docker build -t notification-platform:local .
 docker compose -f docker-compose.e2e.yml -p rc-notify-e2e up -d
 ```
 
-该环境会额外启动 `mock-vendor`，用于验证 worker 对下游 HTTP API 的真实投递链路。API 映射到 `http://127.0.0.1:18000`。
+该环境会额外启动 `mock-vendor`，并自动迁移数据库和初始化供应商数据，用于验证 worker 对下游 HTTP API 的真实投递链路。API 映射到 `http://127.0.0.1:18000`。
 
 ## 服务
 
@@ -37,17 +32,19 @@ docker compose -f docker-compose.e2e.yml -p rc-notify-e2e up -d
 |---|---|
 | `api` | FastAPI 后端，提供 API 和 `/ops` 运维 UI |
 | `worker` | Dramatiq worker，与 `api` 使用同一个应用镜像 |
+| `db-setup` | 一次性执行数据库迁移和供应商 seed，成功后退出 |
 | `postgres` | PostgreSQL |
 | `redis` | Redis broker |
 
 ## Worker 队列
 
-Worker 启动入口是 `scripts/run_worker.py`，启动时会执行：
+Worker 启动入口是 `python -m scripts.run_worker`，启动时会执行：
 
 1. 同步连接 PostgreSQL，从 `providers` 表读取所有 `enabled=true` 的供应商；
 2. 取 `queue_name` 字段去重，逐个调用 `register_provider_actor(queue_name)` 注册 Dramatiq actor；
-3. 把 queue 列表透传到 Dramatiq CLI 的 `--queues` 参数，启动 worker 进程；
-4. 如果没读到任何 enabled 供应商，**直接退出**，避免静默启动一个不监听任何队列的空 worker。
+3. 通过环境变量让每个 Dramatiq worker 子进程导入模块时也注册这些 actor；
+4. 使用 `--threads 1` 启动 Dramatiq，避免异步 SQLAlchemy 连接跨线程/跨 event loop 复用；
+5. 如果没读到任何 enabled 供应商，**直接退出**，避免静默启动一个不监听任何队列的空 worker。
 
 示例供应商使用的合法 Dramatiq 队列名：
 

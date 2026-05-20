@@ -26,6 +26,8 @@ Docker 完整环境：
 docker compose up --build
 ```
 
+Docker 启动会自动执行 Alembic 迁移并初始化供应商种子数据。
+
 运维 UI 生产入口为 `http://localhost:8000/ops`。
 
 ## 技术栈

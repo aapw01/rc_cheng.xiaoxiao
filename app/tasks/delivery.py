@@ -8,11 +8,12 @@ added providers require a worker restart to pick up the new queue (see SPEC
 
 import asyncio
 import logging
+import os
 from uuid import UUID
 
 import dramatiq
 
-from app.db import AsyncSessionLocal
+from app.db import AsyncSessionLocal, dispose_engine
 from app.services.delivery import deliver_notification
 
 from .broker import redis_broker as redis_broker
@@ -94,5 +95,10 @@ def bootstrap_actors_from_db() -> list[str]:
     queues = asyncio.run(_load_enabled_queue_names())
     for queue_name in queues:
         register_provider_actor(queue_name)
+    asyncio.run(dispose_engine())
     logger.info("provider_queues_registered count=%d queues=%s", len(queues), queues)
     return queues
+
+
+if os.getenv("DRAMATIQ_BOOTSTRAP_PROVIDER_ACTORS") == "1":
+    bootstrap_actors_from_db()

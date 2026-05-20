@@ -6,6 +6,7 @@ listening on those queues. New providers require restarting this process to
 take effect (SPEC §8).
 """
 
+import os
 import sys
 
 from dramatiq.cli import main as dramatiq_main
@@ -17,7 +18,8 @@ def main() -> None:
     queues = bootstrap_actors_from_db()
     if not queues:
         sys.exit("No enabled providers found; refusing to start worker without queues.")
-    sys.argv = ["dramatiq", "app.tasks.delivery", "--queues", *queues]
+    os.environ["DRAMATIQ_BOOTSTRAP_PROVIDER_ACTORS"] = "1"
+    sys.argv = ["dramatiq", "--threads", "1", "app.tasks.delivery"]
     dramatiq_main()
 
 
