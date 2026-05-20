@@ -21,8 +21,39 @@ def test_ops_ui_serves_spa_index():
 
     response = client.get("/ops")
 
+    assert response.status_code == 401
+    assert "运维登录" in response.text
+
+
+def test_ops_login_sets_session_cookie():
+    client = TestClient(app)
+
+    response = client.post("/ops/login", data={"password": "dev-ops-password"}, follow_redirects=False)
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/ops"
+    assert "ops_session=" in response.headers["set-cookie"]
+    assert "dev-ops-password" not in response.headers["set-cookie"]
+
+
+def test_ops_login_rejects_wrong_password():
+    client = TestClient(app)
+
+    response = client.post("/ops/login", data={"password": "wrong-password"}, follow_redirects=False)
+
+    assert response.status_code == 401
+    assert "密码不正确" in response.text
+    assert "set-cookie" not in response.headers
+
+
+def test_ops_ui_serves_spa_after_login():
+    client = TestClient(app)
+    client.post("/ops/login", data={"password": "dev-ops-password"})
+
+    response = client.get("/ops")
+
     assert response.status_code == 200
-    assert "Notification Ops" in response.text
+    assert "通知投递运维" in response.text
 
 
 def test_unhandled_error_uses_api_response_shape():

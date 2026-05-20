@@ -1,6 +1,14 @@
-import { Card, Col, Row, Statistic, Table, Tag, Typography } from "antd";
-import { useEffect, useState } from "react";
-import { getMetrics, Metrics } from "../api";
+import { Card, Table, Tag, Typography } from "antd";
+import { useEffect, useMemo, useState } from "react";
+import { getMetrics, Metrics, Provider } from "../api";
+
+type QueueRow = Provider & {
+  pending: number;
+  retrying: number;
+  delivered: number;
+  failed: number;
+  total: number;
+};
 
 export default function Dashboard() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
@@ -9,45 +17,63 @@ export default function Dashboard() {
     getMetrics().then(setMetrics);
   }, []);
 
-  const statuses = metrics?.by_status ?? {};
+  const rows = useMemo<QueueRow[]>(() => {
+    return (metrics?.providers ?? []).map((provider) => {
+      const counts = metrics?.by_provider[provider.provider_code] ?? {};
+      const statusCounts = {
+        pending: counts.pending ?? 0,
+        retrying: counts.retrying ?? 0,
+        delivered: counts.delivered ?? 0,
+        failed: counts.failed ?? 0
+      };
+      return {
+        ...provider,
+        ...statusCounts,
+        total: Object.values(statusCounts).reduce((sum, value) => sum + value, 0)
+      };
+    });
+  }, [metrics]);
 
   return (
     <div>
-      <Typography.Title level={3}>Dashboard</Typography.Title>
-      <Row gutter={[16, 16]}>
-        <Col span={6}>
-          <Card>
-            <Statistic title="Total" value={metrics?.total ?? 0} />
-          </Card>
-        </Col>
-        {["pending", "retrying", "delivered", "failed"].map((status) => (
-          <Col span={6} key={status}>
-            <Card>
-              <Statistic title={status} value={statuses[status] ?? 0} />
-            </Card>
-          </Col>
-        ))}
-      </Row>
-      <Card className="section-card" title="Provider Backlog">
+      <Typography.Title level={3}>队列概览</Typography.Title>
+      <Card title="各队列任务状态">
         <Table
           rowKey="provider_code"
-          dataSource={metrics?.providers ?? []}
+          dataSource={rows}
           pagination={false}
           columns={[
-            { title: "Provider", dataIndex: "display_name" },
-            { title: "Queue", dataIndex: "queue_name" },
+            { title: "供应商", dataIndex: "display_name" },
+            { title: "队列", dataIndex: "queue_name" },
             {
-              title: "State",
-              render: (_, row) => (
-                <>
-                  <Tag color={row.enabled ? "green" : "red"}>{row.enabled ? "enabled" : "disabled"}</Tag>
-                  <Tag color={row.paused ? "orange" : "blue"}>{row.paused ? "paused" : "active"}</Tag>
-                </>
-              )
+              title: "待投递",
+              dataIndex: "pending",
+              align: "right" as const
             },
             {
-              title: "Failures",
-              render: (_, row) => metrics?.by_provider[row.provider_code]?.failed ?? 0
+              title: "已送达",
+              dataIndex: "delivered",
+              align: "right" as const
+            },
+            {
+              title: "重试中",
+              dataIndex: "retrying",
+              align: "right" as const
+            },
+            { title: "合计", dataIndex: "total", align: "right" as const },
+            {
+              title: "失败",
+              dataIndex: "failed",
+              align: "right" as const
+            },
+            {
+              title: "状态",
+              render: (_, row) => (
+                <>
+                  <Tag color={row.enabled ? "green" : "red"}>{row.enabled ? "已启用" : "已禁用"}</Tag>
+                  <Tag color={row.paused ? "orange" : "blue"}>{row.paused ? "已暂停" : "运行中"}</Tag>
+                </>
+              )
             }
           ]}
         />
@@ -55,4 +81,3 @@ export default function Dashboard() {
     </div>
   );
 }
-

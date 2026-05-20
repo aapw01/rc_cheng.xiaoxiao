@@ -7,6 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     app_env: str = "local"
     api_key: str = "dev-api-key"
+    ops_password: str = "dev-ops-password"
     cors_allowed_origins: str = ""
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/notifications"
     redis_url: str = "redis://localhost:6379/0"

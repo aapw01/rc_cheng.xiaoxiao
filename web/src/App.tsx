@@ -18,7 +18,7 @@ export default function App() {
     <Layout className="app-shell">
       <Sider width={232} className="app-sider">
         <Typography.Title level={4} className="brand">
-          Notification Ops
+          通知投递运维
         </Typography.Title>
         <Menu
           theme="dark"
@@ -29,15 +29,15 @@ export default function App() {
             setSelectedNotificationId(null);
           }}
           items={[
-            { key: "dashboard", icon: <Activity size={16} />, label: "Dashboard" },
-            { key: "providers", icon: <Server size={16} />, label: "Providers" },
-            { key: "notifications", icon: <Bell size={16} />, label: "Notifications" }
+            { key: "dashboard", icon: <Activity size={16} />, label: "队列概览" },
+            { key: "providers", icon: <Server size={16} />, label: "供应商" },
+            { key: "notifications", icon: <Bell size={16} />, label: "通知任务" }
           ]}
         />
       </Sider>
       <Layout>
         <Header className="app-header">
-          <Typography.Text strong>Internal API notification delivery platform</Typography.Text>
+          <Typography.Text strong>内部 API 通知投递平台</Typography.Text>
         </Header>
         <Content className="app-content">
           {selectedNotificationId ? (
@@ -54,4 +54,3 @@ export default function App() {
     </Layout>
   );
 }
-

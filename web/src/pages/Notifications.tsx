@@ -2,6 +2,16 @@ import { Button, Card, Select, Space, Table, Tag, Typography } from "antd";
 import { useEffect, useState } from "react";
 import { getNotifications, getProviders, NotificationItem, Provider } from "../api";
 
+const STATUS_OPTIONS = [
+  { label: "待投递", value: "pending" },
+  { label: "投递中", value: "delivering" },
+  { label: "重试中", value: "retrying" },
+  { label: "已送达", value: "delivered" },
+  { label: "失败", value: "failed" }
+];
+
+const STATUS_LABELS = Object.fromEntries(STATUS_OPTIONS.map((item) => [item.value, item.label]));
+
 export default function Notifications({ onOpen }: { onOpen: (id: string) => void }) {
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [providers, setProviders] = useState<Provider[]>([]);
@@ -32,11 +42,11 @@ export default function Notifications({ onOpen }: { onOpen: (id: string) => void
 
   return (
     <Card>
-      <Typography.Title level={3}>Notifications</Typography.Title>
+      <Typography.Title level={3}>通知任务</Typography.Title>
       <Space className="toolbar">
         <Select
           allowClear
-          placeholder="Provider"
+          placeholder="供应商"
           style={{ width: 180 }}
           value={provider}
           onChange={(value) => {
@@ -47,35 +57,32 @@ export default function Notifications({ onOpen }: { onOpen: (id: string) => void
         />
         <Select
           allowClear
-          placeholder="Status"
+          placeholder="状态"
           style={{ width: 180 }}
           value={status}
           onChange={(value) => {
             setStatus(value);
             setPage(1);
           }}
-          options={["pending", "delivering", "retrying", "delivered", "failed"].map((item) => ({
-            label: item,
-            value: item
-          }))}
+          options={STATUS_OPTIONS}
         />
       </Space>
       <Table
         rowKey="id"
         dataSource={items}
         columns={[
-          { title: "Provider", dataIndex: "provider_code" },
-          { title: "Event", dataIndex: "event_type" },
-          { title: "Event ID", dataIndex: "event_id" },
+          { title: "供应商", dataIndex: "provider_code" },
+          { title: "事件类型", dataIndex: "event_type" },
+          { title: "事件 ID", dataIndex: "event_id" },
           {
-            title: "Status",
+            title: "状态",
             dataIndex: "status",
-            render: (value) => <Tag>{value}</Tag>
+            render: (value) => <Tag>{STATUS_LABELS[value] ?? value}</Tag>
           },
-          { title: "Attempts", dataIndex: "attempt_count" },
+          { title: "尝试次数", dataIndex: "attempt_count" },
           {
-            title: "Action",
-            render: (_, row) => <Button onClick={() => onOpen(row.id)}>Open</Button>
+            title: "操作",
+            render: (_, row) => <Button onClick={() => onOpen(row.id)}>查看</Button>
           }
         ]}
         pagination={{

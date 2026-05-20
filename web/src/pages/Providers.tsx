@@ -14,37 +14,37 @@ export default function Providers() {
   async function toggle(provider: Provider) {
     if (provider.paused) {
       await resumeProvider(provider.provider_code);
-      message.success("Provider resumed");
+      message.success("供应商已恢复");
     } else {
       await pauseProvider(provider.provider_code);
-      message.success("Provider paused");
+      message.success("供应商已暂停");
     }
     await load();
   }
 
   return (
     <Card>
-      <Typography.Title level={3}>Providers</Typography.Title>
+      <Typography.Title level={3}>供应商管理</Typography.Title>
       <Table
         rowKey="provider_code"
         dataSource={providers}
         columns={[
-          { title: "Provider", dataIndex: "display_name" },
-          { title: "Code", dataIndex: "provider_code" },
-          { title: "Queue", dataIndex: "queue_name" },
+          { title: "供应商", dataIndex: "display_name" },
+          { title: "编码", dataIndex: "provider_code" },
+          { title: "队列", dataIndex: "queue_name" },
           {
-            title: "Status",
+            title: "状态",
             render: (_, row) => (
               <Space>
-                <Tag color={row.enabled ? "green" : "red"}>{row.enabled ? "enabled" : "disabled"}</Tag>
-                <Tag color={row.paused ? "orange" : "blue"}>{row.paused ? "paused" : "active"}</Tag>
+                <Tag color={row.enabled ? "green" : "red"}>{row.enabled ? "已启用" : "已禁用"}</Tag>
+                <Tag color={row.paused ? "orange" : "blue"}>{row.paused ? "已暂停" : "运行中"}</Tag>
               </Space>
             )
           },
           {
-            title: "Action",
+            title: "操作",
             render: (_, row) => (
-              <Button onClick={() => toggle(row)}>{row.paused ? "Resume" : "Pause"}</Button>
+              <Button onClick={() => toggle(row)}>{row.paused ? "恢复" : "暂停"}</Button>
             )
           }
         ]}
@@ -52,4 +52,3 @@ export default function Providers() {
     </Card>
   );
 }
-

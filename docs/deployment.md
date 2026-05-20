@@ -15,6 +15,8 @@ Compose 会先启动一次性 `db-setup` 服务，自动执行 `alembic upgrade 
 http://localhost:8000/ops
 ```
 
+`/ops` 入口有独立的运维密码保护，默认读取环境变量 `OPS_PASSWORD`。本地开发可以沿用 `.env.example` 中的默认值，真实环境应改成仅运维人员可知的强密码。
+
 ## 本地镜像验收环境
 
 如果本机已有 PostgreSQL 或 Redis 占用端口，可以使用不暴露数据库端口的验收 Compose：
