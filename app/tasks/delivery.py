@@ -13,7 +13,7 @@ from uuid import UUID
 
 import dramatiq
 
-from app.db import AsyncSessionLocal, dispose_engine
+from app.db import create_session, dispose_engine
 from app.services.delivery import deliver_notification
 
 from .broker import redis_broker as redis_broker
@@ -42,7 +42,7 @@ def _actor_time_limit_ms() -> int:
 
 
 async def _deliver(notification_id: str) -> None:
-    async with AsyncSessionLocal() as session:
+    async with create_session() as session:
         await deliver_notification(session, UUID(notification_id))
 
 
@@ -77,11 +77,17 @@ async def _load_enabled_queue_names() -> list[str]:
 
     from app.models import Provider
 
-    async with AsyncSessionLocal() as session:
+    async with create_session() as session:
         rows = await session.scalars(
             select(Provider.queue_name).where(Provider.enabled.is_(True)).distinct()
         )
         return list(rows)
+
+
+async def _bootstrap_actor_queues() -> list[str]:
+    queues = await _load_enabled_queue_names()
+    await dispose_engine()
+    return queues
 
 
 def bootstrap_actors_from_db() -> list[str]:
@@ -92,10 +98,9 @@ def bootstrap_actors_from_db() -> list[str]:
     on. API processes do not need to call this — `actor_for_queue` registers
     actors lazily during enqueue.
     """
-    queues = asyncio.run(_load_enabled_queue_names())
+    queues = asyncio.run(_bootstrap_actor_queues())
     for queue_name in queues:
         register_provider_actor(queue_name)
-    asyncio.run(dispose_engine())
     logger.info("provider_queues_registered count=%d queues=%s", len(queues), queues)
     return queues
 

@@ -2,7 +2,7 @@ import asyncio
 
 from sqlalchemy import select
 
-from app.db import AsyncSessionLocal
+from app.db import create_session
 from app.models import Provider
 
 PROVIDER_SEEDS = [
@@ -31,7 +31,7 @@ PROVIDER_SEEDS = [
 
 
 async def seed() -> None:
-    async with AsyncSessionLocal() as session:
+    async with create_session() as session:
         for item in PROVIDER_SEEDS:
             provider = await session.scalar(select(Provider).where(Provider.provider_code == item["provider_code"]))
             if provider is None:
@@ -45,4 +45,3 @@ async def seed() -> None:
 
 if __name__ == "__main__":
     asyncio.run(seed())
-
