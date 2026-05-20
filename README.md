@@ -23,7 +23,7 @@ npm --prefix web run dev
 Docker 完整环境：
 
 ```bash
-docker compose -f docker-compose.e2e.yml up --build
+docker compose up --build
 ```
 
 Docker 启动会自动执行 Alembic 迁移并初始化供应商种子数据。
@@ -65,13 +65,13 @@ Docker 启动会自动执行 Alembic 迁移并初始化供应商种子数据。
 
 ## Docker Compose
 
-项目只保留一个 Compose 文件：[docker-compose.e2e.yml](docker-compose.e2e.yml)，同时支持本地测试和使用 GitHub Actions 打包出的镜像。
+项目只保留一个 Compose 文件：[docker-compose.yml](docker-compose.yml)，同时支持本地测试和使用 GitHub Actions 打包出的镜像。
 
 | 场景 | 命令 |
 |---|---|
-| 本地构建并启动 | `docker compose -f docker-compose.e2e.yml up --build` |
-| 使用上游镜像启动 | `IMAGE=ghcr.io/aapw01/rc_cheng.xiaoxiao:master docker compose -f docker-compose.e2e.yml up -d --no-build` |
-| 启动 mock vendor 做端到端测试 | `PROVIDER_CRM_BASE_URL=http://mock-vendor:9000 docker compose -f docker-compose.e2e.yml --profile mock up --build` |
+| 本地构建并启动 | `docker compose up --build` |
+| 使用上游镜像启动 | `IMAGE=ghcr.io/aapw01/rc_cheng.xiaoxiao:master docker compose up -d --no-build` |
+| 启动 mock vendor 做端到端测试 | `PROVIDER_CRM_BASE_URL=http://mock-vendor:9000 docker compose --profile mock up --build` |
 
 ## 镜像打包
 

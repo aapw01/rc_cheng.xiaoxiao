@@ -22,10 +22,10 @@ npm --prefix web run build
 
 ## 容器端到端验收
 
-`docker-compose.e2e.yml` 使用统一应用镜像、PostgreSQL、Redis 和可选 mock vendor 验证真实异步链路：
+`docker-compose.yml` 使用统一应用镜像、PostgreSQL、Redis 和可选 mock vendor 验证真实异步链路：
 
 ```bash
-PROVIDER_CRM_BASE_URL=http://mock-vendor:9000 docker compose -f docker-compose.e2e.yml --profile mock up --build -d
+PROVIDER_CRM_BASE_URL=http://mock-vendor:9000 docker compose --profile mock up --build -d
 curl -fsS http://127.0.0.1:18000/health
 ```
 
@@ -34,7 +34,7 @@ curl -fsS http://127.0.0.1:18000/health
 mock vendor 默认返回 `200`。需要验证失败链路时，可以把供应商 URL 指到 `/fail-500` 路径，或在请求里带 `X-Mock-Status: 503`，mock vendor 会按指定状态码响应。
 
 ```bash
-docker compose -f docker-compose.e2e.yml down -v
+docker compose down -v
 ```
 
 ## 集成测试覆盖

@@ -23,10 +23,10 @@ seed:
 	uv run python -m scripts.seed_providers
 
 docker-up:
-	docker compose -f docker-compose.e2e.yml up --build
+	docker compose up --build
 
 docker-down:
-	docker compose -f docker-compose.e2e.yml down
+	docker compose down
 
 web-build:
 	npm --prefix web run build

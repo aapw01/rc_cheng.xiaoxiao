@@ -183,7 +183,7 @@ def test_user_registered_request():
 ```bash
 uv run pytest tests/providers/test_example_adapter.py
 uv run python -m scripts.seed_providers
-docker compose -f docker-compose.e2e.yml up --build -d
+docker compose up --build -d
 uv run pytest tests/integration/test_example_delivery.py
 ```
 

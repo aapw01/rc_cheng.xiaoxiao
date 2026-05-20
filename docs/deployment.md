@@ -4,7 +4,7 @@
 
 ```bash
 cp .env.example .env
-docker compose -f docker-compose.e2e.yml up --build
+docker compose up --build
 ```
 
 Compose 会先启动一次性 `db-setup` 服务，自动执行 `alembic upgrade head` 并初始化供应商种子数据；`api` 和 `worker` 会等它成功完成后再启动。
@@ -19,18 +19,18 @@ http://localhost:18000/ops
 
 ## 统一 Compose 文件
 
-项目只保留一个 `docker-compose.e2e.yml`，同时覆盖本地测试和部署验证：
+项目只保留一个 `docker-compose.yml`，同时覆盖本地测试和部署验证：
 
 | 场景 | 命令 | 说明 |
 |---|---|---|
-| 本地构建并启动 | `docker compose -f docker-compose.e2e.yml up --build` | 默认构建 `notification-platform:local` |
-| 使用 GitHub Actions 镜像 | `IMAGE=ghcr.io/aapw01/rc_cheng.xiaoxiao:master docker compose -f docker-compose.e2e.yml up -d --no-build` | 不依赖本地源码构建 |
-| 端到端 mock vendor 测试 | `PROVIDER_CRM_BASE_URL=http://mock-vendor:9000 docker compose -f docker-compose.e2e.yml --profile mock up --build` | 额外启动 `mock-vendor` |
+| 本地构建并启动 | `docker compose up --build` | 默认构建 `notification-platform:local` |
+| 使用 GitHub Actions 镜像 | `IMAGE=ghcr.io/aapw01/rc_cheng.xiaoxiao:master docker compose up -d --no-build` | 不依赖本地源码构建 |
+| 端到端 mock vendor 测试 | `PROVIDER_CRM_BASE_URL=http://mock-vendor:9000 docker compose --profile mock up --build` | 额外启动 `mock-vendor` |
 
 默认 API 映射到 `http://127.0.0.1:18000`。如果需要改端口：
 
 ```bash
-API_PORT=8000 docker compose -f docker-compose.e2e.yml up --build
+API_PORT=8000 docker compose up --build
 ```
 
 `POSTGRES_PORT` 默认 `5432`，`REDIS_PORT` 默认 `6379`。如果本机端口冲突，可以改成 `POSTGRES_PORT=15432 REDIS_PORT=16379`。
