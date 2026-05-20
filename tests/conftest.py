@@ -17,6 +17,7 @@ def disable_dramatiq_enqueue(monkeypatch: pytest.MonkeyPatch) -> None:
             return None
 
     monkeypatch.setattr("app.services.notifications.actor_for_queue", lambda queue_name: NoopActor)
+    monkeypatch.setattr("app.api.admin.actor_for_queue", lambda queue_name: NoopActor)
 
 
 @pytest.fixture
